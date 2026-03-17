@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nerdlandia — The Most Gloriously Nerdy Scavenger Hunt</title>
+  <meta name="description" content="Join Nerdlandia for epic scavenger hunts, team competitions, achievement tracking, and more. The nerdiest fun you'll ever have." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺</text></svg>" />
+</head>
+<body>
+
+  <!-- ── NAV ── -->
+  <header class="site-header">
+    <nav class="nav container">
+      <a href="index.html" class="nav-logo">🗺 Nerdlandia</a>
+      <ul class="nav-links">
+        <li><a href="pages/events.html">Events</a></li>
+        <li><a href="pages/teams.html">Teams</a></li>
+        <li><a href="pages/achievements.html">Achievements</a></li>
+        <li><a href="pages/leaderboard.html">Leaderboard</a></li>
+        <li><a href="pages/marketplace.html">Marketplace <span class="badge-soon">Soon</span></a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="pages/login.html" class="btn btn-ghost">Log in</a>
+        <a href="pages/register.html" class="btn btn-primary">Join the Hunt</a>
+      </div>
+      <button class="nav-toggle" aria-label="Open menu" onclick="toggleNav()">☰</button>
+    </nav>
+    <div class="nav-mobile" id="navMobile">
+      <a href="pages/events.html">Events</a>
+      <a href="pages/teams.html">Teams</a>
+      <a href="pages/achievements.html">Achievements</a>
+      <a href="pages/leaderboard.html">Leaderboard</a>
+      <a href="pages/marketplace.html">Marketplace</a>
+      <a href="pages/login.html">Log in</a>
+      <a href="pages/register.html" class="btn btn-primary" style="text-align:center;">Join the Hunt</a>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── HERO ── -->
+    <section class="hero">
+      <div class="hero-deco hero-deco-1">🧩</div>
+      <div class="hero-deco hero-deco-2">🔍</div>
+      <div class="hero-deco hero-deco-3">🏆</div>
+      <div class="hero-deco hero-deco-4">🎉</div>
+      <div class="hero-deco hero-deco-5">🚀</div>
+      <div class="container hero-inner">
+        <div class="hero-eyebrow">Welcome to the hunt 👋</div>
+        <h1 class="hero-title">The Most Gloriously<br><span class="text-coral">Nerdy</span> Scavenger Hunt</h1>
+        <p class="hero-sub">Puzzles, clues, teamwork, and triumphs. Online and in-person events for curious minds who take fun very seriously.</p>
+        <div class="hero-cta">
+          <a href="pages/events.html" class="btn btn-primary btn-lg">See Upcoming Events</a>
+          <a href="pages/register.html" class="btn btn-outline btn-lg">Create an Account</a>
+        </div>
+        <p class="hero-note">No compass required. Curiosity recommended. ✨</p>
+      </div>
+    </section>
+
+    <!-- ── FEATURE GRID ── -->
+    <section class="section features">
+      <div class="container">
+        <h2 class="section-title">What is Nerdlandia?</h2>
+        <p class="section-sub">Part scavenger hunt platform, part community, entirely chaotic in the best way.</p>
+        <div class="feature-grid">
+          <div class="feature-card coral">
+            <div class="feature-icon">🗺</div>
+            <h3>Epic Hunts</h3>
+            <p>Real-world and online scavenger hunts packed with puzzles, codes, and creative chaos.</p>
+            <a href="pages/events.html" class="feature-link">Browse events →</a>
+          </div>
+          <div class="feature-card blue">
+            <div class="feature-icon">👥</div>
+            <h3>Team Play</h3>
+            <p>Create or join a team, coordinate your crew, and take on the hunt together.</p>
+            <a href="pages/teams.html" class="feature-link">Find a team →</a>
+          </div>
+          <div class="feature-card green">
+            <div class="feature-icon">🏅</div>
+            <h3>Achievements</h3>
+            <p>Earn badges, unlock titles, and build a collection that shows off your nerd credentials.</p>
+            <a href="pages/achievements.html" class="feature-link">See badges →</a>
+          </div>
+          <div class="feature-card amber">
+            <div class="feature-icon">📅</div>
+            <h3>Event Archive</h3>
+            <p>Relive past hunts, check out results, and see the highlights from every event.</p>
+            <a href="pages/events.html#past" class="feature-link">View archive →</a>
+          </div>
+          <div class="feature-card purple">
+            <div class="feature-icon">🛒</div>
+            <h3>Marketplace</h3>
+            <p>Trade, buy, and sell nerd loot between hunters. Coming very soon.</p>
+            <span class="feature-link muted">Coming soon…</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── UPCOMING + LEADERBOARD ── -->
+    <section class="section two-col-section">
+      <div class="container two-col">
+
+        <!-- Upcoming Events -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>📅 Upcoming Events</h2>
+            <a href="pages/events.html" class="panel-link">All events →</a>
+          </div>
+          <ul class="event-list">
+            <li class="event-item">
+              <span class="event-date">Apr 5</span>
+              <div class="event-info">
+                <strong>Spring Cipher Sprint</strong>
+                <span>Online · Teams of 1–4 · Open registration</span>
+              </div>
+              <a href="pages/events.html" class="btn btn-sm btn-primary">Join</a>
+            </li>
+            <li class="event-item">
+              <span class="event-date">May 17</span>
+              <div class="event-info">
+                <strong>The Library Labyrinth</strong>
+                <span>Portland, OR · In-person · 32 spots left</span>
+              </div>
+              <a href="pages/events.html" class="btn btn-sm btn-primary">Join</a>
+            </li>
+            <li class="event-item">
+              <span class="event-date">Jun 1</span>
+              <div class="event-info">
+                <strong>Interstellar Riddle Relay</strong>
+                <span>Online · Solo &amp; Teams · 🚀 Space theme</span>
+              </div>
+              <a href="pages/events.html" class="btn btn-sm btn-primary">Join</a>
+            </li>
+            <li class="event-item">
+              <span class="event-date">Jul 12</span>
+              <div class="event-info">
+                <strong>Cryptid Crawl</strong>
+                <span>Multiple cities · In-person · Bigfoot not included</span>
+              </div>
+              <a href="pages/events.html" class="btn btn-sm btn-outline">Notify me</a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>🏆 Current Leaderboard</h2>
+            <a href="pages/leaderboard.html" class="panel-link">Full board →</a>
+          </div>
+          <ol class="leaderboard">
+            <li class="lb-row lb-gold">
+              <span class="lb-rank">🥇</span>
+              <span class="lb-name">Team Chaos Goblins</span>
+              <span class="lb-pts">4,820 pts</span>
+            </li>
+            <li class="lb-row lb-silver">
+              <span class="lb-rank">🥈</span>
+              <span class="lb-name">The Riddlemasters</span>
+              <span class="lb-pts">4,215 pts</span>
+            </li>
+            <li class="lb-row lb-bronze">
+              <span class="lb-rank">🥉</span>
+              <span class="lb-name">404: Clue Not Found</span>
+              <span class="lb-pts">3,990 pts</span>
+            </li>
+            <li class="lb-row">
+              <span class="lb-rank">4</span>
+              <span class="lb-name">Ctrl+Alt+Defeat</span>
+              <span class="lb-pts">3,701 pts</span>
+            </li>
+            <li class="lb-row">
+              <span class="lb-rank">5</span>
+              <span class="lb-name">The Noodly Appendages</span>
+              <span class="lb-pts">3,488 pts</span>
+            </li>
+            <li class="lb-row">
+              <span class="lb-rank">6</span>
+              <span class="lb-name">We Read the Instructions</span>
+              <span class="lb-pts">3,210 pts</span>
+            </li>
+          </ol>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── STATS BANNER ── -->
+    <section class="section stats-section">
+      <div class="container stats-grid">
+        <div class="stat">
+          <span class="stat-num">42</span>
+          <span class="stat-label">Events Hosted</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">1,200+</span>
+          <span class="stat-label">Registered Hunters</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">180+</span>
+          <span class="stat-label">Teams Formed</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">8,500+</span>
+          <span class="stat-label">Clues Solved</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA FOOTER ── -->
+    <section class="section cta-section">
+      <div class="container cta-inner">
+        <h2>Ready to hunt?</h2>
+        <p>Create your free account and join your first event. No experience necessary — just bring your brain.</p>
+        <a href="pages/register.html" class="btn btn-primary btn-lg">Create a Free Account</a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── SITE FOOTER ── -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="nav-logo">🗺 Nerdlandia</span>
+        <p>The most gloriously nerdy scavenger hunt on the internet.</p>
+      </div>
+      <div class="footer-links">
+        <div>
+          <strong>Explore</strong>
+          <a href="pages/events.html">Events</a>
+          <a href="pages/teams.html">Teams</a>
+          <a href="pages/achievements.html">Achievements</a>
+          <a href="pages/leaderboard.html">Leaderboard</a>
+        </div>
+        <div>
+          <strong>Account</strong>
+          <a href="pages/login.html">Log in</a>
+          <a href="pages/register.html">Sign up</a>
+        </div>
+        <div>
+          <strong>Info</strong>
+          <a href="pages/about.html">About</a>
+          <a href="pages/contact.html">Contact</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom container">
+      <span>© 2025 Nerdlandia · nerdlandia.org</span>
+      <span>Made with 🧠 and an unhealthy amount of caffeine</span>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
