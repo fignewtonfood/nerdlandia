@@ -27,19 +27,21 @@ async function getUser() {
 async function getProfile(userId) {
   const { data, error } = await sb
     .from('profiles')
-    .select('*, teams(*)')
+    .select('*')
     .eq('id', userId)
     .single();
-  if (error) {
-    console.error('getProfile error:', error);
-    // Try without the team join as fallback
-    const { data: data2 } = await sb
-      .from('profiles')
+  if (error) { console.error('getProfile error:', error); return null; }
+
+  // Fetch team separately if user is on one
+  if (data && data.team_id) {
+    const { data: team } = await sb
+      .from('teams')
       .select('*')
-      .eq('id', userId)
+      .eq('id', data.team_id)
       .single();
-    return data2;
+    data.teams = team || null;
   }
+
   return data;
 }
 
