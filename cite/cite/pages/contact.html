@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact — Nerdlandia</title>
+  <meta name="description" content="Get in touch with the Nerdlandia team. Questions, feedback, or just want to say hi — we'd love to hear from you." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/profile.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺</text></svg>" />
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="nav container">
+      <a href="../index.html" class="nav-logo">🗺 Nerdlandia</a>
+      <ul class="nav-links">
+        <li><a href="events.html">Events</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="achievements.html">Achievements</a></li>
+        <li><a href="leaderboard.html">Leaderboard</a></li>
+        <li><a href="marketplace.html">Marketplace <span class="badge-soon">Soon</span></a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="profile.html" id="navProfile" class="btn btn-ghost" style="display:none;">My Profile</a>
+        <button onclick="signOut()" id="navLogout" class="btn btn-ghost" style="display:none;">Log out</button>
+        <a href="login.html" id="navLogin" class="btn btn-ghost">Log in</a>
+        <a href="register.html" id="navJoin" class="btn btn-primary">Join the Hunt</a>
+      </div>
+      <button class="nav-toggle" aria-label="Open menu" onclick="toggleNav()">☰</button>
+    </nav>
+    <div class="nav-mobile" id="navMobile">
+      <a href="events.html">Events</a>
+      <a href="teams.html">Teams</a>
+      <a href="achievements.html">Achievements</a>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="contact.html">Contact</a>
+      <a href="login.html">Log in</a>
+      <a href="register.html" class="btn btn-primary" style="text-align:center;">Join the Hunt</a>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Page hero -->
+    <section class="page-hero" style="background:var(--purple-light);border-bottom-color:var(--purple-mid);">
+      <div class="container">
+        <h1 style="color:var(--purple);">✉️ Get in Touch</h1>
+        <p>Questions, feedback, event ideas, or just want to say hi — we'd love to hear from you.</p>
+      </div>
+    </section>
+
+    <section class="section" style="padding:3rem 0;">
+      <div class="container" style="max-width:900px;">
+        <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:3rem;align-items:start;">
+
+          <!-- Left: info panel -->
+          <div>
+            <div class="contact-info-card">
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">🧠</div>
+              <h2 style="font-family:var(--font-display);font-size:1.3rem;color:var(--purple);margin-bottom:0.75rem;">We're real humans</h2>
+              <p style="font-size:0.92rem;color:var(--text-muted);line-height:1.65;margin-bottom:1.5rem;">
+                Nerdlandia is a small, passionate project. Every message goes directly to the person running things. We read everything and try to reply within a day or two.
+              </p>
+              <div class="contact-reason">
+                <span>🗺</span> Event questions or ideas
+              </div>
+              <div class="contact-reason">
+                <span>🐛</span> Bug reports or site issues
+              </div>
+              <div class="contact-reason">
+                <span>👥</span> Team or account help
+              </div>
+              <div class="contact-reason">
+                <span>🤝</span> Partnerships or collabs
+              </div>
+              <div class="contact-reason">
+                <span>💬</span> Just saying hi
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: form -->
+          <div>
+            <div class="form-wrap" style="max-width:100%;margin:0;">
+
+              <div id="formSuccess" class="form-msg success" style="display:none;font-size:1rem;padding:1.25rem;">
+                🎉 Message sent! We'll get back to you soon.
+              </div>
+
+              <div id="formError" class="form-msg error" style="display:none;"></div>
+
+              <!--
+                SETUP REQUIRED:
+                1. Go to https://formspree.io and sign up for a free account
+                2. Click "New Form", give it a name like "Nerdlandia Contact"
+                3. Copy the form endpoint URL (looks like https://formspree.io/f/abcdefgh)
+                4. Replace YOUR_FORMSPREE_ID below with just the ID part (e.g. abcdefgh)
+              -->
+              <form id="contactForm" novalidate>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="contactName">Your name</label>
+                    <input type="text" id="contactName" name="name" placeholder="Alex Smith" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="contactEmail">Your email</label>
+                    <input type="email" id="contactEmail" name="email" placeholder="you@example.com" required />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="contactSubject">Subject</label>
+                  <select id="contactSubject" name="subject">
+                    <option value="">Select a topic…</option>
+                    <option value="Event question">Event question</option>
+                    <option value="Bug report">Bug report</option>
+                    <option value="Team or account help">Team or account help</option>
+                    <option value="Partnership or collab">Partnership or collab</option>
+                    <option value="Just saying hi">Just saying hi</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="contactMessage">Message</label>
+                  <textarea id="contactMessage" name="message" rows="6" placeholder="What's on your mind?" required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg form-submit" id="contactBtn">
+                  Send Message ✉️
+                </button>
+
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="nav-logo">🗺 Nerdlandia</span>
+        <p>The most gloriously nerdy scavenger hunt on the internet.</p>
+      </div>
+      <div class="footer-links">
+        <div>
+          <strong>Explore</strong>
+          <a href="events.html">Events</a>
+          <a href="teams.html">Teams</a>
+          <a href="achievements.html">Achievements</a>
+          <a href="leaderboard.html">Leaderboard</a>
+        </div>
+        <div>
+          <strong>Account</strong>
+          <a href="login.html">Log in</a>
+          <a href="register.html">Sign up</a>
+        </div>
+        <div>
+          <strong>Info</strong>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom container">
+      <span>© 2025 Nerdlandia · nerdlandia.org</span>
+      <span>Made with 🧠 and an unhealthy amount of caffeine</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/main.js"></script>
+  <script>
+    const FORMSPREE_ID = 'YOUR_FORMSPREE_ID'; // Replace with your Formspree form ID
+
+    document.getElementById('contactForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('formError');
+      const okEl  = document.getElementById('formSuccess');
+      const btn   = document.getElementById('contactBtn');
+      errEl.style.display = okEl.style.display = 'none';
+
+      const name    = document.getElementById('contactName').value.trim();
+      const email   = document.getElementById('contactEmail').value.trim();
+      const message = document.getElementById('contactMessage').value.trim();
+
+      if (!name)    { errEl.textContent = 'Please enter your name.';    errEl.style.display = 'block'; return; }
+      if (!email)   { errEl.textContent = 'Please enter your email.';   errEl.style.display = 'block'; return; }
+      if (!message) { errEl.textContent = 'Please enter a message.';    errEl.style.display = 'block'; return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+
+      try {
+        const res = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            email,
+            subject:  document.getElementById('contactSubject').value || 'General enquiry',
+            message,
+            _replyto: email,
+          }),
+        });
+
+        if (res.ok) {
+          okEl.style.display = 'block';
+          document.getElementById('contactForm').style.display = 'none';
+        } else {
+          const data = await res.json();
+          errEl.textContent = data?.errors?.[0]?.message || 'Something went wrong. Please try again.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Send Message ✉️';
+        }
+      } catch {
+        errEl.textContent = 'Could not send message. Please check your connection and try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Send Message ✉️';
+      }
+    });
+  </script>
+</body>
+</html>
