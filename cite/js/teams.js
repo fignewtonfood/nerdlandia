@@ -252,10 +252,29 @@ async function removeTeamMember(targetUserId, teamId) {
 // ── LOAD TEAM WITH MEMBERS ───────────────────────────────────
 
 async function getTeamWithMembers(teamId) {
+  // Fetch team
   const { data: team, error } = await sb
     .from('teams')
-    .select('*, profiles(*), team_invites(id, email, status, created_at)')
+    .select('*')
     .eq('id', teamId)
     .single();
-  return { team, error };
+
+  if (error || !team) return { team: null, error };
+
+  // Fetch members separately
+  const { data: members } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('team_id', teamId);
+
+  // Fetch pending invites separately
+  const { data: invites } = await sb
+    .from('team_invites')
+    .select('*')
+    .eq('team_id', teamId);
+
+  team.profiles = members || [];
+  team.team_invites = invites || [];
+
+  return { team, error: null };
 }
