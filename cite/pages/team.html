@@ -129,6 +129,22 @@
     </div>
   </div>
 
+      <!-- Achievements section -->
+      <section class="section" id="achievementsSection" style="padding:2rem 0;display:none;">
+        <div class="container" style="max-width:700px;">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>🏅 Achievements</h2>
+              <span id="achAdminBtn" style="display:none;">
+                <button class="btn btn-sm btn-outline" onclick="openAssignFromTeamPage()">+ Assign Achievement</button>
+              </span>
+            </div>
+            <div id="badgesGrid" class="badges-grid"></div>
+            <p id="noBadgesMsg" style="color:var(--text-muted);font-size:0.9rem;display:none;">No achievements yet. Keep hunting!</p>
+          </div>
+        </div>
+      </section>
+
   <footer class="site-footer">
     <div class="footer-bottom container" style="border-top:none;padding-top:1.5rem;">
       <span>© 2025 Nerdlandia</span>
@@ -139,6 +155,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../js/auth.js"></script>
   <script src="../js/teams.js"></script>
+  <script src="../js/admin.js"></script>
   <script src="../js/main.js"></script>
   <script>
     const PLACEHOLDER_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23E6F1FB"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="36">👥</text></svg>';
@@ -226,6 +243,9 @@
       if ((isAdmin || isLead) && totalTaken < 4) {
         document.getElementById('inviteSection').style.display = 'block';
       }
+
+      // Load achievements
+      await loadAchievements();
     }
 
     async function sendInvite() {
@@ -298,6 +318,108 @@
     function showNotFound() {
       document.getElementById('loadingState').style.display = 'none';
       document.getElementById('notFoundState').style.display = 'block';
+    }
+
+    // ── ACHIEVEMENTS ──────────────────────────────────────────
+    async function loadAchievements() {
+      const { data: teamAchs } = await sb
+        .from('team_achievements')
+        .select('*, achievements(*)')
+        .eq('team_id', teamId);
+
+      const section = document.getElementById('achievementsSection');
+      const grid = document.getElementById('badgesGrid');
+      const noneMsg = document.getElementById('noBadgesMsg');
+      section.style.display = 'block';
+
+      // Show assign button for admins
+      if (currentProfile?.role === 'admin') {
+        document.getElementById('achAdminBtn').style.display = '';
+      }
+
+      if (!teamAchs || !teamAchs.length) {
+        noneMsg.style.display = 'block';
+        return;
+      }
+
+      grid.innerHTML = '';
+      teamAchs.forEach(ta => {
+        const ach = ta.achievements;
+        if (!ach) return;
+        const levels = ach.levels || [];
+        const currentLevel = ta.current_level || 0;
+        const progress = ta.progress || 0;
+        const levelDef = levels[currentLevel] || levels[levels.length - 1];
+        const prevThreshold = currentLevel > 0 ? (levels[currentLevel - 1]?.threshold || 0) : 0;
+        const nextThreshold = levelDef?.threshold || 100;
+        const rangeSize = nextThreshold - prevThreshold;
+        const progressInRange = Math.max(0, progress - prevThreshold);
+        const progressPct = Math.min(100, (progressInRange / rangeSize) * 100);
+        const ringColor = levelDef?.color || '#888';
+        const isMaxed = currentLevel >= levels.length;
+
+        const size = 72;
+        const radius = 30;
+        const circumference = 2 * Math.PI * radius;
+        const dashOffset = circumference - (progressPct / 100) * circumference;
+
+        // Build tooltip HTML
+        const tooltipLevels = levels.map((l, i) => `
+          <div class="badge-tooltip-level ${i === currentLevel ? 'current' : ''}">
+            <span class="badge-tooltip-dot" style="background:${l.color};"></span>
+            ${l.label}: ${l.threshold} pts${i === currentLevel ? ' ← current' : ''}
+          </div>
+        `).join('');
+
+        const adminBtn = currentProfile?.role === 'admin'
+          ? `<button class="btn btn-sm btn-ghost" style="font-size:0.7rem;padding:2px 8px;margin-top:4px;" onclick="openProgressEditor('${ta.team_id}','${ta.achievement_id}',${progress},${currentLevel})">Edit Progress</button>`
+          : '';
+
+        grid.innerHTML += `
+          <div class="badge-wrap">
+            <svg class="badge-ring-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+              <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="var(--gray-200)" stroke-width="5" />
+              <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none"
+                stroke="${ringColor}" stroke-width="5"
+                stroke-dasharray="${circumference}"
+                stroke-dashoffset="${dashOffset}"
+                stroke-linecap="round"
+                transform="rotate(-90 ${size/2} ${size/2})" />
+              <foreignObject x="${size/2 - 22}" y="${size/2 - 22}" width="44" height="44">
+                ${ach.image_url
+                  ? `<img src="${ach.image_url}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;" />`
+                  : `<div style="width:44px;height:44px;border-radius:50%;background:var(--purple-light);display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🏅</div>`
+                }
+              </foreignObject>
+            </svg>
+            <span class="badge-name">${ach.name}</span>
+            <span class="badge-level-label">${isMaxed ? '★ Maxed' : (levelDef?.label || 'Level ' + (currentLevel + 1))}</span>
+            ${adminBtn}
+            <div class="badge-tooltip">
+              <div class="badge-tooltip-title">${ach.name}</div>
+              <div style="color:rgba(255,255,255,0.6);font-size:0.75rem;margin-bottom:6px;">${ach.description || ''}</div>
+              ${tooltipLevels}
+              <div style="margin-top:6px;color:rgba(255,255,255,0.5);">Progress: ${progress} pts</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function openProgressEditor(teamId, achId, currentProgress, currentLevel) {
+      const newProgress = prompt('Enter progress points:', currentProgress);
+      if (newProgress === null) return;
+      const newLevel = prompt('Enter current level (0-indexed):', currentLevel);
+      if (newLevel === null) return;
+      adminUpdateAchievementProgress(teamId, achId, parseInt(newProgress) || 0, parseInt(newLevel) || 0)
+        .then(({ error }) => {
+          if (error) alert(error.message);
+          else location.reload();
+        });
+    }
+
+    async function openAssignFromTeamPage() {
+      window.location.href = 'admin.html';
     }
   </script>
 </body>
