@@ -6,8 +6,8 @@
 //  Supabase Dashboard → Project Settings → API
 // ─────────────────────────────────────────────────────────────
 
-const SUPABASE_URL = 'https://eddrfejfhykyiqthzlyu.supabase.co';       // e.g. https://abcdefgh.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_Ke3HQM6fsitrJZWFUW5Yeg_HVxBXSse'; // long string starting with eyJ...
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';       // e.g. https://abcdefgh.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // long string starting with eyJ...
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -27,21 +27,10 @@ async function getUser() {
 async function getProfile(userId) {
   const { data, error } = await sb
     .from('profiles')
-    .select('*')
+    .select('*, teams(*)')
     .eq('id', userId)
     .single();
-  if (error) { console.error('getProfile error:', error); return null; }
-
-  // Fetch team separately if user is on one
-  if (data && data.team_id) {
-    const { data: team } = await sb
-      .from('teams')
-      .select('*')
-      .eq('id', data.team_id)
-      .single();
-    data.teams = team || null;
-  }
-
+  if (error) console.error('getProfile error:', error);
   return data;
 }
 
@@ -120,16 +109,23 @@ async function uploadAvatar(userId, file) {
 
 async function initNav() {
   const user = await getUser();
-  const loginBtn  = document.getElementById('navLogin');
-  const joinBtn   = document.getElementById('navJoin');
+  const loginBtn   = document.getElementById('navLogin');
+  const joinBtn    = document.getElementById('navJoin');
   const profileBtn = document.getElementById('navProfile');
-  const logoutBtn = document.getElementById('navLogout');
+  const logoutBtn  = document.getElementById('navLogout');
+  const adminBtn   = document.getElementById('navAdmin');
 
   if (user) {
-    if (loginBtn)  loginBtn.style.display  = 'none';
-    if (joinBtn)   joinBtn.style.display   = 'none';
+    if (loginBtn)   loginBtn.style.display   = 'none';
+    if (joinBtn)    joinBtn.style.display    = 'none';
     if (profileBtn) profileBtn.style.display = '';
-    if (logoutBtn) logoutBtn.style.display  = '';
+    if (logoutBtn)  logoutBtn.style.display  = '';
+
+    // Show admin link if user is admin
+    if (adminBtn) {
+      const profile = await getCurrentProfile();
+      if (profile?.role === 'admin') adminBtn.style.display = '';
+    }
   }
 }
 
