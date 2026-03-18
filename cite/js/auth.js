@@ -30,7 +30,16 @@ async function getProfile(userId) {
     .select('*, teams(*)')
     .eq('id', userId)
     .single();
-  if (error) console.error('getProfile error:', error);
+  if (error) {
+    console.error('getProfile error:', error);
+    // Try without the team join as fallback
+    const { data: data2 } = await sb
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    return data2;
+  }
   return data;
 }
 
