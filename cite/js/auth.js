@@ -6,8 +6,8 @@
 //  Supabase Dashboard → Project Settings → API
 // ─────────────────────────────────────────────────────────────
 
-const SUPABASE_URL = 'https://eddrfejfhykyiqthzlyu.supabase.co';       // e.g. https://abcdefgh.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_Ke3HQM6fsitrJZWFUW5Yeg_HVxBXSse'; // long string starting with eyJ...
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';       // e.g. https://abcdefgh.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // long string starting with eyJ...
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

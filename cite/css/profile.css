@@ -213,6 +213,31 @@
 }
 .modal-close:hover { color: var(--coral); }
 
+/* ── CONTACT PAGE ─────────────────────────────────────────── */
+.contact-info-card {
+  background: var(--purple-light);
+  border: 2px solid var(--purple-mid);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 1.5rem;
+}
+
+.contact-reason {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--purple-mid);
+}
+.contact-reason:last-child { border-bottom: none; }
+.contact-reason span { font-size: 1.1rem; }
+
+@media (max-width: 700px) {
+  .contact-info-card { margin-bottom: 1.5rem; }
+}
+
 @media (max-width: 600px) {
   .profile-hero-inner { flex-direction: column; }
   .profile-actions { flex-direction: row; }
