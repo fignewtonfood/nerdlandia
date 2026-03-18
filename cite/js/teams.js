@@ -11,9 +11,26 @@ let _nounCache = null;
 
 async function loadNouns() {
   if (_nounCache) return _nounCache;
-  const { data, error } = await sb.from('noun_list').select('word');
-  if (error) { console.error('Could not load noun list', error); return new Set(); }
-  _nounCache = new Set(data.map(r => r.word.toLowerCase()));
+  
+  let allWords = [];
+  let from = 0;
+  const pageSize = 1000;
+  
+  while (true) {
+    const { data, error } = await sb
+      .from('noun_list')
+      .select('word')
+      .range(from, from + pageSize - 1);
+    
+    if (error) { console.error('Could not load noun list', error); break; }
+    if (!data || data.length === 0) break;
+    
+    allWords = allWords.concat(data.map(r => r.word.toLowerCase()));
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  
+  _nounCache = new Set(allWords);
   return _nounCache;
 }
 
