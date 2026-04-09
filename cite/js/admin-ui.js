@@ -106,7 +106,6 @@ async function deleteNoun(word) {
   _allNouns = [];
   await loadNouns();
 }
-}
 
 // ── MODAL HELPERS ─────────────────────────────────────────────
 function closeModal(id)  { document.getElementById(id).style.display = 'none'; }
