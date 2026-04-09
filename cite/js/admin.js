@@ -17,7 +17,7 @@ async function requireAdmin() {
 async function getAllUsers() {
   const { data, error } = await sb
     .from('profiles')
-    .select('*, teams(name)')
+    .select('*, teams!profiles_team_id_fkey(name)')
     .order('created_at', { ascending: true });
   return { data, error };
 }
