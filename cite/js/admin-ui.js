@@ -1,39 +1,52 @@
 // ─────────────────────────────────────────────────────────────
 //  Nerdlandia — Admin UI Logic
-//  js/admin-ui.js  (load after admin.js)
+//  js/admin-ui.js
 // ─────────────────────────────────────────────────────────────
 
 const PLACEHOLDER_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23EEEDFE"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="36">🧙</text></svg>';
 
-let _allUsers = [];
-let _allTeams = [];
-let _allEvents = [];
+let _allUsers        = [];
+let _allTeams        = [];
+let _allEvents       = [];
 let _allAchievements = [];
-let levelCount = 0;
+let _eventTypes      = [];
+let _levelCount      = 0;
 
 // ── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   await requireAdmin();
   loadUsers();
+  loadEventTypes(); // preload so event form is ready
 });
 
 // ── TABS ─────────────────────────────────────────────────────
-function switchTab(tab) {
+function switchTab(tab, btn) {
   document.querySelectorAll('.admin-tab-content').forEach(el => el.style.display = 'none');
   document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
   document.getElementById(`tab-${tab}`).style.display = 'block';
-  event.target.classList.add('active');
-
-  if (tab === 'users' && !_allUsers.length) loadUsers();
-  if (tab === 'teams' && !_allTeams.length) loadTeams();
-  if (tab === 'events' && !_allEvents.length) loadEvents();
+  btn.classList.add('active');
+  if (tab === 'users'        && !_allUsers.length)        loadUsers();
+  if (tab === 'teams'        && !_allTeams.length)        loadTeams();
+  if (tab === 'events'       && !_allEvents.length)       loadEvents();
   if (tab === 'achievements' && !_allAchievements.length) loadAchievements();
 }
 
 // ── MODAL HELPERS ─────────────────────────────────────────────
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-function openModal(id)  { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id)  { document.getElementById(id).style.display = 'none'; }
+function openModal(id)   { document.getElementById(id).style.display = 'flex'; }
 function closeModalIfOutside(e, id) { if (e.target.id === id) closeModal(id); }
+
+// ── FORMAT HELPERS ────────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr % 12 || 12}:${m} ${hr < 12 ? 'AM' : 'PM'}`;
+}
 
 // ── USERS ────────────────────────────────────────────────────
 async function loadUsers() {
@@ -66,8 +79,7 @@ function renderUsers(users) {
         <button class="btn btn-sm btn-ghost" onclick="openEditUser('${u.id}')">Edit</button>
         ${u.role !== 'admin'
           ? `<button class="btn btn-sm btn-outline" onclick="grantAdmin('${u.id}')">Make Admin</button>`
-          : `<button class="btn btn-sm btn-ghost" onclick="revokeAdmin('${u.id}')">Revoke Admin</button>`
-        }
+          : `<button class="btn btn-sm btn-ghost" onclick="revokeAdmin('${u.id}')">Revoke Admin</button>`}
       </div>
     </div>
   `).join('');
@@ -89,24 +101,17 @@ function openEditUser(userId) {
 
 async function saveUser() {
   const id = document.getElementById('editUserId').value;
-  const username = document.getElementById('editUserUsername').value.trim();
-  const fname = document.getElementById('editUserFname').value.trim();
-  const lname = document.getElementById('editUserLname').value.trim();
-  const bio = document.getElementById('editUserBio').value.trim();
-  const role = document.getElementById('editUserRole').value;
   const errEl = document.getElementById('editUserError');
   errEl.style.display = 'none';
-
   const { error } = await adminUpdateUser(id, {
-    username: username || null,
-    full_name: [fname, lname].filter(Boolean).join(' ') || null,
-    bio: bio || null,
-    role,
+    username:  document.getElementById('editUserUsername').value.trim() || null,
+    full_name: [document.getElementById('editUserFname').value.trim(), document.getElementById('editUserLname').value.trim()].filter(Boolean).join(' ') || null,
+    bio:       document.getElementById('editUserBio').value.trim() || null,
+    role:      document.getElementById('editUserRole').value,
   });
   if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   closeModal('editUserModal');
-  _allUsers = [];
-  loadUsers();
+  _allUsers = []; loadUsers();
 }
 
 async function grantAdmin(userId) {
@@ -150,10 +155,9 @@ function renderTeams(teams) {
         <div class="admin-row-actions">
           <button class="btn btn-sm btn-ghost" onclick="openEditTeam('${t.id}')">Edit</button>
           <a href="team.html?id=${t.id}" class="btn btn-sm btn-ghost" target="_blank">View</a>
-          <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="deleteTeam('${t.id}','${t.name}')">Delete</button>
+          <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="deleteTeam('${t.id}','${t.name.replace(/'/g,"\\'")}')">Delete</button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
@@ -168,14 +172,13 @@ function openEditTeam(teamId) {
   openModal('editTeamModal');
 }
 
-async function saveTeam() {
+async function saveTeamAdmin() {
   const id = document.getElementById('editTeamId').value;
   const name = document.getElementById('editTeamName').value.trim();
   const desc = document.getElementById('editTeamDesc').value.trim();
   const photo = document.getElementById('editTeamPhoto').files[0];
   const errEl = document.getElementById('editTeamError');
   errEl.style.display = 'none';
-
   const fields = { description: desc || null };
   const original = _allTeams.find(t => t.id === id);
   if (name && name !== original?.name) {
@@ -183,19 +186,58 @@ async function saveTeam() {
     if (!nameCheck.valid) { errEl.textContent = nameCheck.error; errEl.style.display = 'block'; return; }
     fields.name = name;
   }
-
   const { error } = await adminUpdateTeam(id, fields, photo);
   if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   closeModal('editTeamModal');
-  _allTeams = [];
-  loadTeams();
+  _allTeams = []; loadTeams();
 }
 
 async function deleteTeam(teamId, teamName) {
-  if (!confirm(`Delete team "${teamName}"? This cannot be undone. All members will be removed from the team.`)) return;
+  if (!confirm(`Delete team "${teamName}"? All members will be removed. This cannot be undone.`)) return;
   const { error } = await adminDeleteTeam(teamId);
   if (error) alert(error.message);
   else { _allTeams = []; loadTeams(); }
+}
+
+// ── EVENT TYPES ───────────────────────────────────────────────
+async function loadEventTypes() {
+  const { data } = await getEventTypes();
+  _eventTypes = data || [];
+  populateEventTypeSelect();
+}
+
+function populateEventTypeSelect() {
+  const sel = document.getElementById('eventTypeSelect');
+  if (!sel) return;
+  sel.innerHTML =
+    '<option value="">Select type…</option>' +
+    _eventTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('') +
+    '<option value="__custom__">+ Add custom type…</option>';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('eventTypeSelect')?.addEventListener('change', function() {
+    const wrap = document.getElementById('customTypeWrap');
+    wrap.style.display = this.value === '__custom__' ? 'block' : 'none';
+    if (this.value !== '__custom__') document.getElementById('customTypeMsg').style.display = 'none';
+  });
+});
+
+async function saveCustomType() {
+  const name = document.getElementById('customTypeName').value.trim();
+  const msg  = document.getElementById('customTypeMsg');
+  msg.style.display = 'none';
+  if (!name) return;
+  const { data, error } = await adminCreateEventType(name);
+  if (error) {
+    msg.textContent = error.message.includes('unique') ? 'That type already exists.' : error.message;
+    msg.style.color = 'var(--coral)'; msg.style.display = 'block'; return;
+  }
+  _eventTypes.push(data);
+  populateEventTypeSelect();
+  document.getElementById('eventTypeSelect').value = data.id;
+  document.getElementById('customTypeWrap').style.display = 'none';
+  document.getElementById('customTypeName').value = '';
 }
 
 // ── EVENTS ───────────────────────────────────────────────────
@@ -209,109 +251,132 @@ function renderEvents(events) {
   const el = document.getElementById('eventsList');
   if (!events.length) { el.innerHTML = '<p class="loading-msg">No events yet. Create one!</p>'; return; }
 
-  const statusColors = { upcoming: 'blue', active: 'green', completed: 'gray', cancelled: 'coral' };
-
   el.innerHTML = events.map(ev => {
-    const regs = ev.event_registrations || [];
-    const color = statusColors[ev.status] || 'gray';
+    const status = deriveEventStatus(ev.start_date, ev.end_date);
+    const regs   = ev.event_registrations || [];
+    const typeLabel = ev.event_types?.name || '—';
+    const statusColors = { upcoming: 'blue', active: 'green', completed: 'gray' };
+    const color = statusColors[status] || 'gray';
+
+    const dateStr = ev.start_date === ev.end_date
+      ? `${fmtDate(ev.start_date)}${ev.start_time ? ' · ' + fmtTime(ev.start_time) : ''} – ${ev.end_time ? fmtTime(ev.end_time) : ''}`
+      : `${fmtDate(ev.start_date)}${ev.start_time ? ' ' + fmtTime(ev.start_time) : ''} – ${fmtDate(ev.end_date)}${ev.end_time ? ' ' + fmtTime(ev.end_time) : ''}`;
+
     return `
       <div class="admin-row" style="align-items:flex-start;flex-wrap:wrap;gap:12px;">
-        <div class="admin-row-info" style="flex:1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div class="admin-row-info" style="flex:1;min-width:200px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
             <strong>${ev.title}</strong>
-            <span class="status-pill ${color}">${ev.status}</span>
+            <span class="status-pill ${color}">${status}</span>
+            <span class="status-pill gray">${typeLabel}</span>
           </div>
-          <span>${ev.event_date || 'No date set'} · ${ev.location || 'No location'}</span>
-          <span>${regs.length} team${regs.length !== 1 ? 's' : ''} registered</span>
+          <span>${dateStr}</span>
+          <span>${ev.location || 'No location'} · ${regs.length} team${regs.length !== 1 ? 's' : ''}${ev.max_teams ? ` / ${ev.max_teams} max` : ''}</span>
         </div>
         <div class="admin-row-actions" style="flex-shrink:0;">
           <button class="btn btn-sm btn-ghost" onclick="openEventModal('${ev.id}')">Edit</button>
-          <button class="btn btn-sm btn-outline" onclick="openEventTeams('${ev.id}','${ev.title.replace(/'/g,"\\'")}')">Teams & Points</button>
+          <button class="btn btn-sm btn-outline" onclick="openEventTeams('${ev.id}')">Teams &amp; Points</button>
           <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="deleteEvent('${ev.id}','${ev.title.replace(/'/g,"\\'")}')">Delete</button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
-function openEventModal(eventId) {
+async function openEventModal(eventId) {
+  if (!_eventTypes.length) await loadEventTypes();
+  populateEventTypeSelect();
+
   document.getElementById('eventId').value = eventId || '';
   document.getElementById('eventError').style.display = 'none';
+  document.getElementById('customTypeWrap').style.display = 'none';
 
   if (eventId) {
     const ev = _allEvents.find(e => e.id === eventId);
     if (!ev) return;
     document.getElementById('eventModalTitle').textContent = 'Edit Event';
-    document.getElementById('eventTitle').value = ev.title;
-    document.getElementById('eventDesc').value = ev.description || '';
-    document.getElementById('eventDate').value = ev.event_date || '';
-    document.getElementById('eventStatus').value = ev.status;
-    document.getElementById('eventLocation').value = ev.location || '';
-    document.getElementById('eventMaxTeams').value = ev.max_teams || '';
+    document.getElementById('eventTitle').value       = ev.title;
+    document.getElementById('eventDesc').value        = ev.description || '';
+    document.getElementById('eventTypeSelect').value  = ev.event_type_id || '';
+    document.getElementById('eventLocation').value    = ev.location || '';
+    document.getElementById('eventStartDate').value   = ev.start_date || '';
+    document.getElementById('eventStartTime').value   = ev.start_time || '';
+    document.getElementById('eventEndDate').value     = ev.end_date || '';
+    document.getElementById('eventEndTime').value     = ev.end_time || '';
+    document.getElementById('eventMaxTeams').value    = ev.max_teams || '';
   } else {
     document.getElementById('eventModalTitle').textContent = 'New Event';
-    document.getElementById('eventTitle').value = '';
-    document.getElementById('eventDesc').value = '';
-    document.getElementById('eventDate').value = '';
-    document.getElementById('eventStatus').value = 'upcoming';
-    document.getElementById('eventLocation').value = '';
-    document.getElementById('eventMaxTeams').value = '';
+    document.getElementById('eventTitle').value       = '';
+    document.getElementById('eventDesc').value        = '';
+    document.getElementById('eventTypeSelect').value  = '';
+    document.getElementById('eventLocation').value    = '';
+    document.getElementById('eventStartDate').value   = '';
+    document.getElementById('eventStartTime').value   = '';
+    document.getElementById('eventEndDate').value     = '';
+    document.getElementById('eventEndTime').value     = '';
+    document.getElementById('eventMaxTeams').value    = '';
   }
   openModal('eventModal');
 }
 
 async function saveEvent() {
-  const id = document.getElementById('eventId').value;
+  const id    = document.getElementById('eventId').value;
   const errEl = document.getElementById('eventError');
   errEl.style.display = 'none';
 
-  const fields = {
-    title:     document.getElementById('eventTitle').value.trim(),
-    description: document.getElementById('eventDesc').value.trim() || null,
-    event_date: document.getElementById('eventDate').value || null,
-    status:    document.getElementById('eventStatus').value,
-    location:  document.getElementById('eventLocation').value.trim() || null,
-    max_teams: document.getElementById('eventMaxTeams').value ? parseInt(document.getElementById('eventMaxTeams').value) : null,
-  };
+  const title      = document.getElementById('eventTitle').value.trim();
+  const startDate  = document.getElementById('eventStartDate').value;
+  const endDate    = document.getElementById('eventEndDate').value;
+  const typeVal    = document.getElementById('eventTypeSelect').value;
 
-  if (!fields.title) { errEl.textContent = 'Title is required.'; errEl.style.display = 'block'; return; }
+  if (!title)     { errEl.textContent = 'Title is required.';        errEl.style.display = 'block'; return; }
+  if (!startDate) { errEl.textContent = 'Start date is required.';   errEl.style.display = 'block'; return; }
+  if (!endDate)   { errEl.textContent = 'End date is required.';     errEl.style.display = 'block'; return; }
+  if (endDate < startDate) { errEl.textContent = 'End date must be on or after start date.'; errEl.style.display = 'block'; return; }
+  if (!typeVal || typeVal === '__custom__') { errEl.textContent = 'Please select an event type.'; errEl.style.display = 'block'; return; }
+
+  const fields = {
+    title,
+    description:    document.getElementById('eventDesc').value.trim() || null,
+    event_type_id:  typeVal || null,
+    location:       document.getElementById('eventLocation').value.trim() || null,
+    start_date:     startDate,
+    start_time:     document.getElementById('eventStartTime').value || null,
+    end_date:       endDate,
+    end_time:       document.getElementById('eventEndTime').value || null,
+    max_teams:      document.getElementById('eventMaxTeams').value ? parseInt(document.getElementById('eventMaxTeams').value) : null,
+  };
 
   const { error } = id ? await adminUpdateEvent(id, fields) : await adminCreateEvent(fields);
   if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   closeModal('eventModal');
-  _allEvents = [];
-  loadEvents();
+  _allEvents = []; loadEvents();
 }
 
 async function deleteEvent(eventId, title) {
-  if (!confirm(`Delete event "${title}"? This will also remove all team registrations and scores.`)) return;
+  if (!confirm(`Delete "${title}"? All team registrations and scores will also be removed.`)) return;
   const { error } = await adminDeleteEvent(eventId);
   if (error) alert(error.message);
   else { _allEvents = []; loadEvents(); }
 }
 
-async function openEventTeams(eventId, title) {
+// ── EVENT TEAMS ───────────────────────────────────────────────
+async function openEventTeams(eventId) {
   document.getElementById('eventTeamsEventId').value = eventId;
-  document.getElementById('eventTeamsTitle').textContent = `Teams: ${title}`;
   document.getElementById('addTeamMsg').style.display = 'none';
 
-  // Populate team selector with unregistered teams
-  const ev = _allEvents.find(e => e.id === eventId);
-  const registeredIds = new Set((ev?.event_registrations || []).map(r => r.team_id));
   if (!_allTeams.length) { const { data } = await getAllTeams(); _allTeams = data || []; }
-  const unregistered = _allTeams.filter(t => !registeredIds.has(t.id));
-  const sel = document.getElementById('addTeamSelect');
-  sel.innerHTML = unregistered.length
-    ? unregistered.map(t => `<option value="${t.id}">${t.name}</option>`).join('')
-    : '<option value="">All teams registered</option>';
 
-  renderEventTeams(ev);
+  const ev = _allEvents.find(e => e.id === eventId);
+  document.getElementById('eventTeamsTitle').textContent = ev?.title || 'Teams & Points';
+
+  renderEventTeamsList(ev);
+  refreshAddTeamSelector(ev);
   openModal('eventTeamsModal');
 }
 
-function renderEventTeams(ev) {
+function renderEventTeamsList(ev) {
   const regs = ev?.event_registrations || [];
-  const el = document.getElementById('eventTeamsList');
+  const el   = document.getElementById('eventTeamsList');
   if (!regs.length) { el.innerHTML = '<p class="loading-msg">No teams registered yet.</p>'; return; }
   el.innerHTML = regs.map(r => `
     <div class="admin-row" style="flex-wrap:wrap;gap:8px;">
@@ -320,54 +385,87 @@ function renderEventTeams(ev) {
         <span>Points: <strong>${r.points}</strong> · Placement: ${r.placement ? `#${r.placement}` : '—'}</span>
       </div>
       <div class="admin-row-actions">
-        <button class="btn btn-sm btn-outline" onclick="openPointsEditor('${ev.id}','${r.team_id}',${r.points},${r.placement || 0})">Edit Points</button>
-        <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="removeTeamFromEvent('${ev.id}','${r.team_id}')">Remove</button>
+        <button class="btn btn-sm btn-outline" onclick="openPointsModal('${ev.id}','${r.team_id}',${r.points},${r.placement || ''},${JSON.stringify(r.teams?.name || '').replace(/"/g,"'")})">Edit Points</button>
+        <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="removeFromEvent('${ev.id}','${r.team_id}')">Remove</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
+}
+
+function refreshAddTeamSelector(ev) {
+  const registeredIds = new Set((ev?.event_registrations || []).map(r => r.team_id));
+  const unregistered  = _allTeams.filter(t => !registeredIds.has(t.id));
+  const sel = document.getElementById('addTeamSelect');
+  sel.innerHTML = unregistered.length
+    ? unregistered.map(t => `<option value="${t.id}">${t.name}</option>`).join('')
+    : '<option value="">All teams registered</option>';
+  sel.disabled = !unregistered.length;
 }
 
 async function addTeamToEvent() {
   const eventId = document.getElementById('eventTeamsEventId').value;
-  const teamId = document.getElementById('addTeamSelect').value;
-  const msg = document.getElementById('addTeamMsg');
+  const teamId  = document.getElementById('addTeamSelect').value;
+  const msg     = document.getElementById('addTeamMsg');
   msg.style.display = 'none';
   if (!teamId) return;
-  const { error } = await adminRegisterTeam(eventId, teamId);
-  if (error) { msg.textContent = '❌ ' + error.message; msg.className = 'form-msg error'; msg.style.display = 'block'; return; }
-  msg.textContent = '✅ Team added!'; msg.className = 'form-msg success'; msg.style.display = 'block';
-  _allEvents = []; await loadEvents();
+
+  // Check team limit
   const ev = _allEvents.find(e => e.id === eventId);
-  renderEventTeams(ev);
-  // Refresh selector
-  const registeredIds = new Set((ev?.event_registrations || []).map(r => r.team_id));
-  const unregistered = _allTeams.filter(t => !registeredIds.has(t.id));
-  document.getElementById('addTeamSelect').innerHTML = unregistered.length
-    ? unregistered.map(t => `<option value="${t.id}">${t.name}</option>`).join('')
-    : '<option value="">All teams registered</option>';
+  if (ev?.max_teams && (ev.event_registrations || []).length >= ev.max_teams) {
+    msg.textContent = `This event is full (max ${ev.max_teams} teams).`;
+    msg.className = 'form-msg error'; msg.style.display = 'block'; return;
+  }
+
+  const { error } = await adminRegisterTeam(eventId, teamId);
+  if (error) {
+    msg.textContent = '❌ ' + error.message;
+    msg.className = 'form-msg error'; msg.style.display = 'block'; return;
+  }
+  msg.textContent = '✅ Team added!';
+  msg.className = 'form-msg success'; msg.style.display = 'block';
+  _allEvents = []; await loadEvents();
+  const updated = _allEvents.find(e => e.id === eventId);
+  renderEventTeamsList(updated);
+  refreshAddTeamSelector(updated);
 }
 
-function openPointsEditor(eventId, teamId, points, placement) {
-  // Inline prompt for now — could be a modal if preferred
-  const newPoints = prompt('Enter points for this team:', points);
-  if (newPoints === null) return;
-  const newPlacement = prompt('Enter placement (leave blank if not final):', placement || '');
-  adminUpdatePoints(eventId, teamId, parseInt(newPoints) || 0, parseInt(newPlacement) || null)
-    .then(({ error }) => {
-      if (error) alert(error.message);
-      else { _allEvents = []; loadEvents(); closeModal('eventTeamsModal'); }
-    });
+function openPointsModal(eventId, teamId, points, placement, teamName) {
+  document.getElementById('pointsEventId').value   = eventId;
+  document.getElementById('pointsTeamId').value    = teamId;
+  document.getElementById('pointsValue').value     = points;
+  document.getElementById('placementValue').value  = placement || '';
+  document.getElementById('pointsTeamName').textContent = teamName || 'Team';
+  document.getElementById('pointsError').style.display = 'none';
+  openModal('pointsModal');
 }
 
-async function removeTeamFromEvent(eventId, teamId) {
+async function savePoints() {
+  const eventId   = document.getElementById('pointsEventId').value;
+  const teamId    = document.getElementById('pointsTeamId').value;
+  const points    = parseInt(document.getElementById('pointsValue').value) || 0;
+  const placement = document.getElementById('placementValue').value ? parseInt(document.getElementById('placementValue').value) : null;
+  const errEl     = document.getElementById('pointsError');
+  errEl.style.display = 'none';
+
+  const { error } = await adminUpdatePoints(eventId, teamId, points, placement);
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+  closeModal('pointsModal');
+  _allEvents = []; await loadEvents();
+  // Refresh teams modal if still open
+  const evTeamsModal = document.getElementById('eventTeamsModal');
+  if (evTeamsModal.style.display !== 'none') {
+    const updated = _allEvents.find(e => e.id === eventId);
+    renderEventTeamsList(updated);
+  }
+}
+
+async function removeFromEvent(eventId, teamId) {
   if (!confirm('Remove this team from the event?')) return;
   const { error } = await adminRemoveTeamFromEvent(eventId, teamId);
-  if (error) alert(error.message);
-  else {
-    _allEvents = []; await loadEvents();
-    const ev = _allEvents.find(e => e.id === eventId);
-    renderEventTeams(ev);
-  }
+  if (error) { alert(error.message); return; }
+  _allEvents = []; await loadEvents();
+  const updated = _allEvents.find(e => e.id === eventId);
+  renderEventTeamsList(updated);
+  refreshAddTeamSelector(updated);
 }
 
 // ── ACHIEVEMENTS ──────────────────────────────────────────────
@@ -384,7 +482,7 @@ function renderAchievements(achievements) {
     const levels = a.levels || [];
     return `
       <div class="admin-row">
-        <div class="ach-thumb" style="background:var(--purple-light);border:2px solid var(--purple-mid);">
+        <div class="ach-thumb">
           ${a.image_url ? `<img src="${a.image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />` : '🏅'}
         </div>
         <div class="admin-row-info">
@@ -397,17 +495,15 @@ function renderAchievements(achievements) {
           <button class="btn btn-sm btn-outline" onclick="openAssignAch('${a.id}')">Assign to Team</button>
           <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="deleteAchievement('${a.id}','${a.name.replace(/'/g,"\\'")}')">Delete</button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
 function openAchievementModal(achId) {
-  levelCount = 0;
+  _levelCount = 0;
   document.getElementById('levelsList').innerHTML = '';
   document.getElementById('achId').value = achId || '';
   document.getElementById('achError').style.display = 'none';
-
   if (achId) {
     const a = _allAchievements.find(a => a.id === achId);
     if (!a) return;
@@ -419,14 +515,14 @@ function openAchievementModal(achId) {
     document.getElementById('achModalTitle').textContent = 'New Achievement';
     document.getElementById('achName').value = '';
     document.getElementById('achDesc').value = '';
-    addLevel(); // start with one level
+    addLevel();
   }
   openModal('achievementModal');
 }
 
 function addLevel(existing) {
-  levelCount++;
-  const i = levelCount;
+  _levelCount++;
+  const i = _levelCount;
   const div = document.createElement('div');
   div.className = 'level-row';
   div.id = `level-${i}`;
@@ -438,10 +534,8 @@ function addLevel(existing) {
     <div class="form-group" style="flex:1;margin-bottom:0;">
       <input type="number" placeholder="Threshold pts" class="level-threshold" min="1" value="${existing?.threshold || ''}" />
     </div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <input type="color" class="level-color" value="${existing?.color || '#C0C0C0'}" style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;" />
-    </div>
-    <button class="btn btn-sm btn-ghost" style="color:var(--coral);padding:0 8px;" onclick="removeLevel(${i})">✕</button>
+    <input type="color" class="level-color" value="${existing?.color || '#C0C0C0'}" style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;padding:2px;flex-shrink:0;" />
+    <button class="btn btn-sm btn-ghost" style="color:var(--coral);padding:0 8px;flex-shrink:0;" onclick="removeLevel(${i})">✕</button>
   `;
   document.getElementById('levelsList').appendChild(div);
 }
@@ -452,41 +546,35 @@ function removeLevel(i) {
 }
 
 function collectLevels() {
-  const rows = document.querySelectorAll('.level-row');
-  return Array.from(rows).map((row, idx) => ({
-    level: idx + 1,
-    label: row.querySelector('.level-label').value.trim(),
+  return Array.from(document.querySelectorAll('.level-row')).map((row, idx) => ({
+    level:     idx + 1,
+    label:     row.querySelector('.level-label').value.trim(),
     threshold: parseInt(row.querySelector('.level-threshold').value) || 0,
-    color: row.querySelector('.level-color').value,
+    color:     row.querySelector('.level-color').value,
   })).filter(l => l.label);
 }
 
 async function saveAchievement() {
-  const id = document.getElementById('achId').value;
+  const id    = document.getElementById('achId').value;
   const errEl = document.getElementById('achError');
   errEl.style.display = 'none';
-
-  const name = document.getElementById('achName').value.trim();
-  const desc = document.getElementById('achDesc').value.trim();
-  const imageFile = document.getElementById('achImage').files[0];
+  const name   = document.getElementById('achName').value.trim();
+  const desc   = document.getElementById('achDesc').value.trim();
+  const image  = document.getElementById('achImage').files[0];
   const levels = collectLevels();
-
-  if (!name) { errEl.textContent = 'Name is required.'; errEl.style.display = 'block'; return; }
-  if (!levels.length) { errEl.textContent = 'Add at least one level.'; errEl.style.display = 'block'; return; }
-
+  if (!name)         { errEl.textContent = 'Name is required.';            errEl.style.display = 'block'; return; }
+  if (!levels.length){ errEl.textContent = 'Add at least one level.';      errEl.style.display = 'block'; return; }
   const fields = { name, description: desc || null, levels };
   const { error } = id
-    ? await adminUpdateAchievement(id, fields, imageFile)
-    : await adminCreateAchievement({ ...fields, imageFile });
-
+    ? await adminUpdateAchievement(id, fields, image)
+    : await adminCreateAchievement({ ...fields, imageFile: image });
   if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   closeModal('achievementModal');
-  _allAchievements = [];
-  loadAchievements();
+  _allAchievements = []; loadAchievements();
 }
 
 async function deleteAchievement(achId, name) {
-  if (!confirm(`Delete achievement "${name}"? This will also remove it from all teams.`)) return;
+  if (!confirm(`Delete achievement "${name}"? It will be removed from all teams.`)) return;
   const { error } = await adminDeleteAchievement(achId);
   if (error) alert(error.message);
   else { _allAchievements = []; loadAchievements(); }
@@ -496,17 +584,22 @@ async function openAssignAch(achId) {
   document.getElementById('assignAchId').value = achId;
   document.getElementById('assignAchMsg').style.display = 'none';
   if (!_allTeams.length) { const { data } = await getAllTeams(); _allTeams = data || []; }
-  const sel = document.getElementById('assignTeamSelect');
-  sel.innerHTML = _allTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  document.getElementById('assignTeamSelect').innerHTML =
+    _allTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   openModal('assignAchModal');
 }
 
 async function assignAchievement() {
-  const achId = document.getElementById('assignAchId').value;
+  const achId  = document.getElementById('assignAchId').value;
   const teamId = document.getElementById('assignTeamSelect').value;
-  const msg = document.getElementById('assignAchMsg');
+  const msg    = document.getElementById('assignAchMsg');
   const { error } = await adminAssignAchievement(teamId, achId);
   msg.style.display = 'block';
-  if (error) { msg.textContent = '❌ ' + (error.message.includes('unique') ? 'This team already has this achievement.' : error.message); msg.className = 'form-msg error'; }
-  else { msg.textContent = '✅ Achievement assigned!'; msg.className = 'form-msg success'; }
+  if (error) {
+    msg.textContent = '❌ ' + (error.message.includes('unique') ? 'This team already has this achievement.' : error.message);
+    msg.className = 'form-msg error';
+  } else {
+    msg.textContent = '✅ Achievement assigned!';
+    msg.className = 'form-msg success';
+  }
 }

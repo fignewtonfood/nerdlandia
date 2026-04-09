@@ -1,9 +1,8 @@
 // ─────────────────────────────────────────────────────────────
 //  Nerdlandia — Admin Logic
-//  js/admin.js  (load after auth.js and teams.js)
+//  js/admin.js
 // ─────────────────────────────────────────────────────────────
 
-// ── GUARD: redirect non-admins ───────────────────────────────
 async function requireAdmin() {
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== 'admin') {
@@ -15,7 +14,6 @@ async function requireAdmin() {
 }
 
 // ── USERS ────────────────────────────────────────────────────
-
 async function getAllUsers() {
   const { data, error } = await sb
     .from('profiles')
@@ -39,14 +37,12 @@ async function adminGrantAdmin(userId) {
 }
 
 async function adminRevokeAdmin(userId) {
-  // Check they're not a team lead — if so demote to individual
   const { data: profile } = await sb.from('profiles').select('role').eq('id', userId).single();
   const newRole = profile?.role === 'team_lead' ? 'team_lead' : 'individual';
   return adminUpdateUser(userId, { role: newRole });
 }
 
 // ── TEAMS ─────────────────────────────────────────────────────
-
 async function getAllTeams() {
   const { data, error } = await sb
     .from('teams')
@@ -70,26 +66,48 @@ async function adminUpdateTeam(teamId, fields, photoFile) {
 }
 
 async function adminDeleteTeam(teamId) {
-  // Remove all members from team first
   await sb.from('profiles').update({ team_id: null, role: 'individual' }).eq('team_id', teamId);
   const { error } = await sb.from('teams').delete().eq('id', teamId);
   return { error };
 }
 
-// ── EVENTS ───────────────────────────────────────────────────
+// ── EVENT TYPES ───────────────────────────────────────────────
+async function getEventTypes() {
+  const { data, error } = await sb
+    .from('event_types')
+    .select('*')
+    .order('is_default', { ascending: false })
+    .order('name');
+  return { data, error };
+}
 
+async function adminCreateEventType(name) {
+  const { data, error } = await sb
+    .from('event_types')
+    .insert({ name: name.trim() })
+    .select()
+    .single();
+  return { data, error };
+}
+
+// ── EVENTS ───────────────────────────────────────────────────
 async function getAllEvents() {
   const { data, error } = await sb
     .from('events')
-    .select('*, event_registrations(id, team_id, points, placement, teams(name))')
-    .order('event_date', { ascending: false });
+    .select(`
+      *,
+      event_types(id, name),
+      event_registrations(id, team_id, points, placement, teams(name))
+    `)
+    .order('start_date', { ascending: false });
   return { data, error };
 }
 
 async function adminCreateEvent(fields) {
+  const user = await getUser();
   const { data, error } = await sb
     .from('events')
-    .insert({ ...fields, created_by: (await getUser()).id })
+    .insert({ ...fields, created_by: user.id })
     .select()
     .single();
   return { data, error };
@@ -111,11 +129,11 @@ async function adminDeleteEvent(eventId) {
 }
 
 // ── EVENT REGISTRATIONS ───────────────────────────────────────
-
 async function adminRegisterTeam(eventId, teamId) {
+  const user = await getUser();
   const { data, error } = await sb
     .from('event_registrations')
-    .insert({ event_id: eventId, team_id: teamId })
+    .insert({ event_id: eventId, team_id: teamId, registered_by: user.id })
     .select()
     .single();
   return { data, error };
@@ -142,7 +160,6 @@ async function adminRemoveTeamFromEvent(eventId, teamId) {
 }
 
 // ── ACHIEVEMENTS ──────────────────────────────────────────────
-
 async function getAllAchievements() {
   const { data, error } = await sb
     .from('achievements')
@@ -153,8 +170,6 @@ async function getAllAchievements() {
 
 async function adminCreateAchievement({ name, description, levels, imageFile }) {
   const user = await getUser();
-
-  // Insert achievement first
   const { data: ach, error } = await sb
     .from('achievements')
     .insert({ name, description, levels, created_by: user.id })
@@ -162,7 +177,6 @@ async function adminCreateAchievement({ name, description, levels, imageFile }) 
     .single();
   if (error) return { data: null, error };
 
-  // Upload image if provided
   if (imageFile) {
     const ext = imageFile.name.split('.').pop();
     const path = `${ach.id}/badge.${ext}`;
@@ -173,7 +187,6 @@ async function adminCreateAchievement({ name, description, levels, imageFile }) 
       ach.image_url = urlData.publicUrl;
     }
   }
-
   return { data: ach, error: null };
 }
 
@@ -196,8 +209,6 @@ async function adminDeleteAchievement(achievementId) {
   return { error };
 }
 
-// ── TEAM ACHIEVEMENT ASSIGNMENT ───────────────────────────────
-
 async function adminAssignAchievement(teamId, achievementId) {
   const user = await getUser();
   const { data, error } = await sb
@@ -219,44 +230,13 @@ async function adminUpdateAchievementProgress(teamId, achievementId, progress, c
   return { data, error };
 }
 
-async function adminRemoveAchievement(teamId, achievementId) {
-  const { error } = await sb
-    .from('team_achievements')
-    .delete()
-    .eq('team_id', teamId)
-    .eq('achievement_id', achievementId);
-  return { error };
-}
-
-// ── ACHIEVEMENT PROGRESS HELPER ───────────────────────────────
-// Given a team_achievement row and its achievement definition,
-// returns { level, color, progressPct, nextThreshold, currentThreshold }
-
-function calcAchievementProgress(teamAch, achievement) {
-  const levels = achievement.levels || [];
-  if (!levels.length) return null;
-
-  const currentLevel = teamAch.current_level || 0;
-  const progress = teamAch.progress || 0;
-
-  // Current level info (0-indexed — level 0 means working toward level 1)
-  const levelDef = levels[currentLevel] || levels[levels.length - 1];
-  const prevThreshold = currentLevel > 0 ? (levels[currentLevel - 1]?.threshold || 0) : 0;
-  const nextThreshold = levelDef.threshold;
-  const rangeSize = nextThreshold - prevThreshold;
-  const progressInRange = Math.max(0, progress - prevThreshold);
-  const progressPct = Math.min(100, Math.round((progressInRange / rangeSize) * 100));
-
-  return {
-    level: currentLevel,
-    levelDef,
-    color: levelDef.color || '#888',
-    progressPct,
-    progress,
-    nextThreshold,
-    prevThreshold,
-    levels,
-    maxLevel: levels.length,
-    isMaxed: currentLevel >= levels.length,
-  };
+// ── EVENT STATUS HELPER (client-side) ─────────────────────────
+function deriveEventStatus(startDate, endDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate);
+  const end   = new Date(endDate);
+  if (today < start) return 'upcoming';
+  if (today > end)   return 'completed';
+  return 'active';
 }
