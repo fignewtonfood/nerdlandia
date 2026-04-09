@@ -35,32 +35,27 @@ function switchTab(tab, btn) {
 let _allNouns = [];
 
 async function loadNouns() {
-  const { data, error } = await sb
+  const { count } = await sb
     .from('noun_list')
-    .select('word')
-    .order('word');
-  if (error) { console.error('loadNouns error:', error); return; }
-  _allNouns = (data || []).map(r => r.word);
+    .select('*', { count: 'exact', head: true });
   const countEl = document.getElementById('nounCount');
-  if (countEl) countEl.textContent = `${_allNouns.length.toLocaleString()} nouns`;
-  renderNouns(_allNouns);
+  if (countEl) countEl.textContent = `${(count || 0).toLocaleString()} nouns in the list`;
+  const grid = document.getElementById('nounGrid');
+  if (grid) grid.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Use the search box to find specific nouns, or add new ones above.</p>';
 }
 
 function filterNouns() {
-  const q = document.getElementById('nounSearch').value.toLowerCase();
-  renderNouns(q ? _allNouns.filter(w => w.toLowerCase().includes(q)) : _allNouns);
+  const q = document.getElementById('nounSearch').value.trim();
+  if (!q) { document.getElementById('nounGrid').innerHTML = ''; return; }
+  sb.from('noun_list').select('word').ilike('word', `%${q}%`).order('word').limit(50)
+    .then(({ data }) => {
+      const el = document.getElementById('nounGrid');
+      if (!data || !data.length) { el.innerHTML = '<p class="loading-msg">No nouns found.</p>'; return; }
+      el.innerHTML = data.map(r => `<span class="noun-pill">${r.word}</span>`).join('');
+    });
 }
 
-function renderNouns(nouns) {
-  const el = document.getElementById('nounGrid');
-  if (!nouns.length) { el.innerHTML = '<p class="loading-msg">No nouns found.</p>'; return; }
-  el.innerHTML = nouns.map(w => `
-    <span class="noun-pill">
-      ${w}
-      <button onclick="deleteNoun('${w.replace(/'/g,"\\'")}')">✕</button>
-    </span>
-  `).join('');
-}
+function renderNouns() {}
 
 async function addNouns() {
   const raw = document.getElementById('nounInput').value;
@@ -79,22 +74,23 @@ async function addNouns() {
     msg.className = 'form-msg error'; msg.style.display = 'block'; return;
   }
 
-  const { error } = await sb
-    .from('noun_list')
-    .insert(words.map(w => ({ word: w })));
-
-msg.style.display = 'block';
-  if (error && error.code !== '23505') {
-    msg.textContent = '❌ ' + error.message;
-    msg.className = 'form-msg error'; return;
+  const results = [];
+  for (const word of words) {
+    const { error } = await sb.from('noun_list').insert({ word });
+    if (error && error.code === '23505') {
+      results.push(`"${word}" — already on the list`);
+    } else if (error) {
+      results.push(`"${word}" — ❌ error: ${error.message}`);
+    } else {
+      results.push(`"${word}" — ✅ added!`);
+    }
   }
 
-msg.textContent = `✅ Done! New nouns added (duplicates skipped).`;
+  msg.innerHTML = results.join('<br>');
   msg.className = 'form-msg success';
+  msg.style.display = 'block';
   document.getElementById('nounInput').value = '';
   if (typeof _nounCache !== 'undefined') _nounCache = null;
-  _allNouns = [];
-  await loadNouns();
 }
 
 async function deleteNoun(word) {
