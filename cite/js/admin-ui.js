@@ -3,7 +3,7 @@
 //  js/admin-ui.js
 // ─────────────────────────────────────────────────────────────
 
-const PLACEHOLDER_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23EEEDFE"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="36">🧙</text></svg>';
+const PLACEHOLDER_AVATAR = 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 80 80%22%3E%3Crect width%3D%2280%22 height%3D%2280%22 fill%3D%22%23EEEDFE%22%2F%3E%3Ctext x%3D%2250%25%22 y%3D%2254%25%22 dominant-baseline%3D%22middle%22 text-anchor%3D%22middle%22 font-size%3D%2236%22%3E%F0%9F%A7%99%3C%2Ftext%3E%3C%2Fsvg%3E';
 
 let _allUsers        = [];
 let _allTeams        = [];
