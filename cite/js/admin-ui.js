@@ -83,13 +83,13 @@ async function addNouns() {
     .from('noun_list')
     .insert(words.map(w => ({ word: w })));
 
-  msg.style.display = 'block';
-  if (error && !error.message.includes('duplicate')) {
+msg.style.display = 'block';
+  if (error && error.code !== '23505') {
     msg.textContent = '❌ ' + error.message;
     msg.className = 'form-msg error'; return;
   }
 
-  msg.textContent = `✅ Added ${words.length} noun${words.length !== 1 ? 's' : ''}!`;
+msg.textContent = `✅ Done! New nouns added (duplicates skipped).`;
   msg.className = 'form-msg success';
   document.getElementById('nounInput').value = '';
   if (typeof _nounCache !== 'undefined') _nounCache = null;
