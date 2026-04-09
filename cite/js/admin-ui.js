@@ -3,7 +3,7 @@
 //  js/admin-ui.js
 // ─────────────────────────────────────────────────────────────
 
-const PLACEHOLDER_AVATAR = 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 80 80%22%3E%3Crect width%3D%2280%22 height%3D%2280%22 fill%3D%22%23EEEDFE%22%2F%3E%3Ctext x%3D%2250%25%22 y%3D%2254%25%22 dominant-baseline%3D%22middle%22 text-anchor%3D%22middle%22 font-size%3D%2236%22%3E%F0%9F%A7%99%3C%2Ftext%3E%3C%2Fsvg%3E';
+const PLACEHOLDER_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23EEEDFE"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="36">🧙</text></svg>';
 
 let _allUsers        = [];
 let _allTeams        = [];
@@ -29,6 +29,83 @@ function switchTab(tab, btn) {
   if (tab === 'teams'        && !_allTeams.length)        loadTeams();
   if (tab === 'events'       && !_allEvents.length)       loadEvents();
   if (tab === 'achievements' && !_allAchievements.length) loadAchievements();
+  if (tab === 'nouns'        && !_allNouns.length)        loadNouns();
+}
+
+// ── NOUN LIST ─────────────────────────────────────────────────
+let _allNouns = [];
+
+async function loadNouns() {
+  const { data, error } = await sb
+    .from('noun_list')
+    .select('word')
+    .order('word');
+  if (error) { console.error('loadNouns error:', error); return; }
+  _allNouns = (data || []).map(r => r.word);
+  const countEl = document.getElementById('nounCount');
+  if (countEl) countEl.textContent = `${_allNouns.length.toLocaleString()} nouns`;
+  renderNouns(_allNouns);
+}
+
+function filterNouns() {
+  const q = document.getElementById('nounSearch').value.toLowerCase();
+  renderNouns(q ? _allNouns.filter(w => w.toLowerCase().includes(q)) : _allNouns);
+}
+
+function renderNouns(nouns) {
+  const el = document.getElementById('nounGrid');
+  if (!nouns.length) { el.innerHTML = '<p class="loading-msg">No nouns found.</p>'; return; }
+  el.innerHTML = nouns.map(w => `
+    <span class="noun-pill">
+      ${w}
+      <button onclick="deleteNoun('${w.replace(/'/g,"\\'")}')">✕</button>
+    </span>
+  `).join('');
+}
+
+async function addNouns() {
+  const raw = document.getElementById('nounInput').value;
+  const msg = document.getElementById('nounAddMsg');
+  msg.style.display = 'none';
+
+  const words = [...new Set(
+    raw.split(/[\n,]+/)
+      .map(w => w.trim())
+      .filter(w => w.length > 0)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+  )];
+
+  if (!words.length) {
+    msg.textContent = 'Please enter at least one noun.';
+    msg.className = 'form-msg error'; msg.style.display = 'block'; return;
+  }
+
+  const { error } = await sb
+    .from('noun_list')
+    .insert(words.map(w => ({ word: w })));
+
+  msg.style.display = 'block';
+  if (error && !error.message.includes('duplicate')) {
+    msg.textContent = '❌ ' + error.message;
+    msg.className = 'form-msg error'; return;
+  }
+
+  msg.textContent = `✅ Added ${words.length} noun${words.length !== 1 ? 's' : ''}!`;
+  msg.className = 'form-msg success';
+  document.getElementById('nounInput').value = '';
+  if (typeof _nounCache !== 'undefined') _nounCache = null;
+  _allNouns = [];
+  await loadNouns();
+}
+
+async function deleteNoun(word) {
+  if (!confirm(`Remove "${word}" from the noun list?`)) return;
+  const { error } = await sb.from('noun_list').delete().eq('word', word);
+  if (error) { alert(error.message); return; }
+  if (typeof _nounCache !== 'undefined') _nounCache = null;
+  _allNouns = [];
+  await loadNouns();
+}
 }
 
 // ── MODAL HELPERS ─────────────────────────────────────────────
