@@ -45,12 +45,11 @@
     <section class="section" style="padding:2rem 0;">
       <div class="container">
 
-        <!-- Tab nav -->
         <div class="admin-tabs">
-          <button class="admin-tab active" onclick="switchTab('users')">👤 Users</button>
-          <button class="admin-tab" onclick="switchTab('teams')">👥 Teams</button>
-          <button class="admin-tab" onclick="switchTab('events')">📅 Events</button>
-          <button class="admin-tab" onclick="switchTab('achievements')">🏅 Achievements</button>
+          <button class="admin-tab active" onclick="switchTab('users', this)">👤 Users</button>
+          <button class="admin-tab" onclick="switchTab('teams', this)">👥 Teams</button>
+          <button class="admin-tab" onclick="switchTab('events', this)">📅 Events</button>
+          <button class="admin-tab" onclick="switchTab('achievements', this)">🏅 Achievements</button>
         </div>
 
         <!-- ── USERS TAB ── -->
@@ -59,9 +58,7 @@
             <h2>All Users</h2>
             <input type="text" id="userSearch" placeholder="Search by name or email…" oninput="filterUsers()" />
           </div>
-          <div id="usersList" class="admin-list">
-            <p class="loading-msg">Loading users…</p>
-          </div>
+          <div id="usersList" class="admin-list"><p class="loading-msg">Loading users…</p></div>
         </div>
 
         <!-- ── TEAMS TAB ── -->
@@ -70,9 +67,7 @@
             <h2>All Teams</h2>
             <input type="text" id="teamSearch" placeholder="Search teams…" oninput="filterTeams()" />
           </div>
-          <div id="teamsList" class="admin-list">
-            <p class="loading-msg">Loading teams…</p>
-          </div>
+          <div id="teamsList" class="admin-list"><p class="loading-msg">Loading teams…</p></div>
         </div>
 
         <!-- ── EVENTS TAB ── -->
@@ -81,9 +76,7 @@
             <h2>Events</h2>
             <button class="btn btn-primary btn-sm" onclick="openEventModal()">+ New Event</button>
           </div>
-          <div id="eventsList" class="admin-list">
-            <p class="loading-msg">Loading events…</p>
-          </div>
+          <div id="eventsList" class="admin-list"><p class="loading-msg">Loading events…</p></div>
         </div>
 
         <!-- ── ACHIEVEMENTS TAB ── -->
@@ -92,9 +85,7 @@
             <h2>Achievements</h2>
             <button class="btn btn-primary btn-sm" onclick="openAchievementModal()">+ New Achievement</button>
           </div>
-          <div id="achievementsList" class="admin-list">
-            <p class="loading-msg">Loading achievements…</p>
-          </div>
+          <div id="achievementsList" class="admin-list"><p class="loading-msg">Loading achievements…</p></div>
         </div>
 
       </div>
@@ -142,14 +133,14 @@
       <div id="editTeamError" class="form-msg error" style="display:none;"></div>
       <input type="hidden" id="editTeamId" />
       <div class="form-group">
-        <label>Team name <span style="font-size:0.75rem;color:var(--coral);">(admin can change)</span></label>
+        <label>Team name <span style="font-size:0.75rem;color:var(--coral);">(admin only)</span></label>
         <input type="text" id="editTeamName" />
         <div id="editTeamNameMsg" style="font-size:0.82rem;margin-top:4px;display:none;"></div>
       </div>
       <div class="form-group"><label>Description</label><textarea id="editTeamDesc" rows="3"></textarea></div>
       <div class="form-group"><label>Team photo</label><input type="file" id="editTeamPhoto" accept="image/*" style="padding:0.4rem;" /></div>
       <div style="display:flex;gap:10px;margin-top:1rem;">
-        <button class="btn btn-primary" style="flex:1;" onclick="saveTeam()">Save Changes</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="saveTeamAdmin()">Save Changes</button>
         <button class="btn btn-ghost" onclick="closeModal('editTeamModal')">Cancel</button>
       </div>
     </div>
@@ -157,46 +148,90 @@
 
   <!-- ── EVENT MODAL ── -->
   <div id="eventModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'eventModal')">
-    <div class="modal-box" style="max-width:560px;">
+    <div class="modal-box" style="max-width:580px;">
       <div class="modal-header">
         <h2 id="eventModalTitle">New Event</h2>
         <button class="modal-close" onclick="closeModal('eventModal')">✕</button>
       </div>
       <div id="eventError" class="form-msg error" style="display:none;"></div>
       <input type="hidden" id="eventId" />
-      <div class="form-group"><label>Title</label><input type="text" id="eventTitle" placeholder="Spring Cipher Sprint" /></div>
-      <div class="form-group"><label>Description</label><textarea id="eventDesc" rows="3"></textarea></div>
+
+      <div class="form-group">
+        <label for="eventTitle">Title</label>
+        <input type="text" id="eventTitle" placeholder="Spring Cipher Sprint" />
+      </div>
+
+      <div class="form-group">
+        <label for="eventDesc">Description</label>
+        <textarea id="eventDesc" rows="3" placeholder="What's this event about?"></textarea>
+      </div>
+
       <div class="form-row">
-        <div class="form-group"><label>Date</label><input type="date" id="eventDate" /></div>
-        <div class="form-group"><label>Status</label>
-          <select id="eventStatus">
-            <option value="upcoming">Upcoming</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+        <div class="form-group">
+          <label for="eventTypeSelect">Event type</label>
+          <select id="eventTypeSelect">
+            <option value="">Loading…</option>
           </select>
         </div>
+        <div class="form-group">
+          <label for="eventLocation">Location <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="text" id="eventLocation" placeholder="City or online platform" />
+        </div>
       </div>
+
+      <!-- Custom event type input (shown when "Add custom…" selected) -->
+      <div id="customTypeWrap" class="form-group" style="display:none;">
+        <label for="customTypeName">Custom event type name</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="customTypeName" placeholder="e.g. Hybrid-Async" style="flex:1;" />
+          <button class="btn btn-sm btn-outline" onclick="saveCustomType()">Add</button>
+        </div>
+        <div id="customTypeMsg" style="font-size:0.82rem;margin-top:4px;display:none;"></div>
+      </div>
+
       <div class="form-row">
-        <div class="form-group"><label>Location</label><input type="text" id="eventLocation" placeholder="Online or city name" /></div>
-        <div class="form-group"><label>Max teams <span style="font-weight:400;color:var(--text-muted);">(blank = unlimited)</span></label><input type="number" id="eventMaxTeams" min="1" /></div>
+        <div class="form-group">
+          <label for="eventStartDate">Start date</label>
+          <input type="date" id="eventStartDate" />
+        </div>
+        <div class="form-group">
+          <label for="eventStartTime">Start time <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="time" id="eventStartTime" />
+        </div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:1rem;">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="eventEndDate">End date</label>
+          <input type="date" id="eventEndDate" />
+        </div>
+        <div class="form-group">
+          <label for="eventEndTime">End time <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="time" id="eventEndTime" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="eventMaxTeams">Team limit <span style="font-weight:400;color:var(--text-muted);">(blank = unlimited)</span></label>
+        <input type="number" id="eventMaxTeams" min="1" placeholder="e.g. 20" style="max-width:160px;" />
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:1.25rem;">
         <button class="btn btn-primary" style="flex:1;" onclick="saveEvent()">Save Event</button>
         <button class="btn btn-ghost" onclick="closeModal('eventModal')">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- ── MANAGE EVENT TEAMS MODAL ── -->
+  <!-- ── EVENT TEAMS MODAL ── -->
   <div id="eventTeamsModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'eventTeamsModal')">
-    <div class="modal-box" style="max-width:600px;">
+    <div class="modal-box" style="max-width:620px;">
       <div class="modal-header">
-        <h2 id="eventTeamsTitle">Event Teams</h2>
+        <h2 id="eventTeamsTitle">Teams & Points</h2>
         <button class="modal-close" onclick="closeModal('eventTeamsModal')">✕</button>
       </div>
       <input type="hidden" id="eventTeamsEventId" />
-      <div id="eventTeamsList" class="admin-list" style="margin-bottom:1rem;"></div>
+      <div id="eventTeamsList" class="admin-list" style="margin-bottom:1.25rem;max-height:320px;overflow-y:auto;"></div>
       <div style="border-top:1px solid var(--gray-200);padding-top:1rem;">
         <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:0.75rem;">Add a team</h3>
         <div style="display:flex;gap:8px;">
@@ -204,6 +239,34 @@
           <button class="btn btn-primary btn-sm" onclick="addTeamToEvent()">Add</button>
         </div>
         <div id="addTeamMsg" style="font-size:0.85rem;margin-top:6px;display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── EDIT POINTS MODAL ── -->
+  <div id="pointsModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'pointsModal')">
+    <div class="modal-box" style="max-width:380px;">
+      <div class="modal-header">
+        <h2>Edit Points</h2>
+        <button class="modal-close" onclick="closeModal('pointsModal')">✕</button>
+      </div>
+      <p id="pointsTeamName" style="font-weight:700;margin-bottom:1rem;color:var(--blue);"></p>
+      <input type="hidden" id="pointsEventId" />
+      <input type="hidden" id="pointsTeamId" />
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pointsValue">Points earned</label>
+          <input type="number" id="pointsValue" min="0" />
+        </div>
+        <div class="form-group">
+          <label for="placementValue">Placement <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="number" id="placementValue" min="1" placeholder="e.g. 1" />
+        </div>
+      </div>
+      <div id="pointsError" class="form-msg error" style="display:none;"></div>
+      <div style="display:flex;gap:10px;margin-top:1rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="savePoints()">Save</button>
+        <button class="btn btn-ghost" onclick="closeModal('pointsModal')">Cancel</button>
       </div>
     </div>
   </div>
@@ -218,18 +281,16 @@
       <div id="achError" class="form-msg error" style="display:none;"></div>
       <input type="hidden" id="achId" />
       <div class="form-group"><label>Name</label><input type="text" id="achName" placeholder="Puzzle Master" /></div>
-      <div class="form-group"><label>Description</label><textarea id="achDesc" rows="2" placeholder="Awarded for exceptional puzzle-solving across events."></textarea></div>
+      <div class="form-group"><label>Description</label><textarea id="achDesc" rows="2" placeholder="Awarded for exceptional puzzle-solving."></textarea></div>
       <div class="form-group"><label>Badge image</label><input type="file" id="achImage" accept="image/*" style="padding:0.4rem;" /></div>
-
       <div style="margin-top:1rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
           <h3 style="font-family:var(--font-display);font-size:1rem;">Levels</h3>
           <button class="btn btn-sm btn-outline" onclick="addLevel()">+ Add Level</button>
         </div>
         <div id="levelsList"></div>
-        <span class="field-hint">Each level needs a name, point threshold, and ring color.</span>
+        <span class="field-hint">Each level needs a label, point threshold, and ring color.</span>
       </div>
-
       <div style="display:flex;gap:10px;margin-top:1.25rem;">
         <button class="btn btn-primary" style="flex:1;" onclick="saveAchievement()">Save Achievement</button>
         <button class="btn btn-ghost" onclick="closeModal('achievementModal')">Cancel</button>
@@ -241,45 +302,16 @@
   <div id="assignAchModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'assignAchModal')">
     <div class="modal-box">
       <div class="modal-header">
-        <h2>Assign Achievement</h2>
+        <h2>Assign Achievement to Team</h2>
         <button class="modal-close" onclick="closeModal('assignAchModal')">✕</button>
       </div>
       <input type="hidden" id="assignAchId" />
-      <div class="form-group">
-        <label>Select team</label>
-        <select id="assignTeamSelect"></select>
-      </div>
+      <div class="form-group"><label>Select team</label><select id="assignTeamSelect"></select></div>
+      <div id="assignAchMsg" class="form-msg" style="display:none;margin-top:0.75rem;"></div>
       <div style="display:flex;gap:10px;margin-top:1rem;">
         <button class="btn btn-primary" style="flex:1;" onclick="assignAchievement()">Assign</button>
         <button class="btn btn-ghost" onclick="closeModal('assignAchModal')">Cancel</button>
       </div>
-      <div id="assignAchMsg" class="form-msg" style="display:none;margin-top:0.75rem;"></div>
-    </div>
-  </div>
-
-  <!-- ── UPDATE PROGRESS MODAL ── -->
-  <div id="progressModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'progressModal')">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2>Update Achievement Progress</h2>
-        <button class="modal-close" onclick="closeModal('progressModal')">✕</button>
-      </div>
-      <input type="hidden" id="progressTeamId" />
-      <input type="hidden" id="progressAchId" />
-      <div id="progressInfo" style="margin-bottom:1rem;font-size:0.9rem;color:var(--text-muted);"></div>
-      <div class="form-group">
-        <label>Progress points</label>
-        <input type="number" id="progressPoints" min="0" />
-      </div>
-      <div class="form-group">
-        <label>Current level</label>
-        <input type="number" id="progressLevel" min="0" />
-      </div>
-      <div style="display:flex;gap:10px;margin-top:1rem;">
-        <button class="btn btn-primary" style="flex:1;" onclick="saveProgress()">Save Progress</button>
-        <button class="btn btn-ghost" onclick="closeModal('progressModal')">Cancel</button>
-      </div>
-      <div id="progressMsg" class="form-msg" style="display:none;margin-top:0.75rem;"></div>
     </div>
   </div>
 
@@ -294,7 +326,7 @@
   <script src="../js/auth.js"></script>
   <script src="../js/teams.js"></script>
   <script src="../js/admin.js"></script>
-  <script src="../js/main.js"></script>
   <script src="../js/admin-ui.js"></script>
+  <script src="../js/main.js"></script>
 </body>
 </html>
