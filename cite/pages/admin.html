@@ -56,7 +56,10 @@
         <div id="tab-users" class="admin-tab-content">
           <div class="admin-toolbar">
             <h2>All Users</h2>
-            <input type="text" id="userSearch" placeholder="Search by name or email…" oninput="filterUsers()" />
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input type="text" id="userSearch" placeholder="Search by name or email…" oninput="filterUsers()" />
+              <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">+ Add User</button>
+            </div>
           </div>
           <div id="usersList" class="admin-list"><p class="loading-msg">Loading users…</p></div>
         </div>
@@ -65,7 +68,10 @@
         <div id="tab-teams" class="admin-tab-content" style="display:none;">
           <div class="admin-toolbar">
             <h2>All Teams</h2>
-            <input type="text" id="teamSearch" placeholder="Search teams…" oninput="filterTeams()" />
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input type="text" id="teamSearch" placeholder="Search teams…" oninput="filterTeams()" />
+              <button class="btn btn-primary btn-sm" onclick="openAddTeamModal()">+ Add Team</button>
+            </div>
           </div>
           <div id="teamsList" class="admin-list"><p class="loading-msg">Loading teams…</p></div>
         </div>
@@ -311,6 +317,146 @@
       <div style="display:flex;gap:10px;margin-top:1rem;">
         <button class="btn btn-primary" style="flex:1;" onclick="assignAchievement()">Assign</button>
         <button class="btn btn-ghost" onclick="closeModal('assignAchModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD USER MODAL ── -->
+  <div id="addUserModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'addUserModal')">
+    <div class="modal-box" style="max-width:500px;">
+      <div class="modal-header">
+        <h2>Add User</h2>
+        <button class="modal-close" onclick="closeModal('addUserModal')">✕</button>
+      </div>
+      <div id="addUserError" class="form-msg error" style="display:none;"></div>
+      <div id="addUserSuccess" class="form-msg success" style="display:none;"></div>
+
+      <!-- Method toggle -->
+      <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+        <button id="addUserMethodInvite" class="btn btn-sm btn-primary" onclick="setAddUserMethod('invite')">Send invite email</button>
+        <button id="addUserMethodManual" class="btn btn-sm btn-ghost" onclick="setAddUserMethod('manual')">Add profile only</button>
+      </div>
+      <p id="addUserMethodDesc" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;">
+        Creates a Supabase account and sends the user a confirmation email so they can log in.
+      </p>
+      <input type="hidden" id="addUserMethod" value="invite" />
+
+      <div class="form-group">
+        <label for="addUserEmail">Email address</label>
+        <input type="email" id="addUserEmail" placeholder="user@example.com" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="addUserFname">First name <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="text" id="addUserFname" placeholder="Alex" />
+        </div>
+        <div class="form-group">
+          <label for="addUserLname">Last name <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <input type="text" id="addUserLname" placeholder="Smith" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="addUserUsername">Username <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+        <input type="text" id="addUserUsername" placeholder="CrypticNerd42" />
+      </div>
+      <div class="form-group">
+        <label for="addUserRole">Role</label>
+        <select id="addUserRole">
+          <option value="individual">Individual</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:1rem;">
+        <button class="btn btn-primary" style="flex:1;" id="addUserBtn" onclick="addUser()">Send Invite</button>
+        <button class="btn btn-ghost" onclick="closeModal('addUserModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD TEAM MODAL ── -->
+  <div id="addTeamModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'addTeamModal')">
+    <div class="modal-box" style="max-width:500px;">
+      <div class="modal-header">
+        <h2>Add Team</h2>
+        <button class="modal-close" onclick="closeModal('addTeamModal')">✕</button>
+      </div>
+      <div id="addTeamError" class="form-msg error" style="display:none;"></div>
+      <div class="form-group">
+        <label for="addTeamName">Team name</label>
+        <input type="text" id="addTeamName" placeholder="e.g. 7 Penguins" oninput="liveValidateNewTeamName()" />
+        <div id="addTeamNameMsg" style="font-size:0.82rem;margin-top:4px;display:none;"></div>
+        <span class="field-hint">⚠️ Cannot be changed after creation except by admin.</span>
+      </div>
+      <div class="form-group">
+        <label for="addTeamDesc">Description <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+        <textarea id="addTeamDesc" rows="2" placeholder="A little about this team…"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="addTeamLead">Team lead <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+        <select id="addTeamLead">
+          <option value="">— No lead assigned —</option>
+        </select>
+        <span class="field-hint">Only users not already on a team can be assigned as lead.</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:1rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="addTeamAdmin()">Create Team</button>
+        <button class="btn btn-ghost" onclick="closeModal('addTeamModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MANAGE TEAM MEMBERS MODAL ── -->
+  <div id="manageTeamModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'manageTeamModal')">
+    <div class="modal-box" style="max-width:600px;">
+      <div class="modal-header">
+        <h2 id="manageTeamTitle">Manage Team</h2>
+        <button class="modal-close" onclick="closeModal('manageTeamModal')">✕</button>
+      </div>
+      <input type="hidden" id="manageTeamId" />
+      <div id="manageTeamMsg" class="form-msg" style="display:none;margin-bottom:1rem;"></div>
+
+      <!-- Current members -->
+      <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:0.75rem;">Current members</h3>
+      <div id="manageTeamMembers" class="admin-list" style="margin-bottom:1.25rem;"></div>
+
+      <!-- Add member -->
+      <div style="border-top:1px solid var(--gray-200);padding-top:1rem;margin-bottom:1rem;">
+        <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:0.75rem;">Add a member</h3>
+        <div style="display:flex;gap:8px;">
+          <select id="addMemberSelect" style="flex:1;"></select>
+          <button class="btn btn-primary btn-sm" onclick="addMemberToTeam()">Add</button>
+        </div>
+        <span class="field-hint" style="margin-top:4px;display:block;">Only shows users not already on a team.</span>
+      </div>
+
+      <!-- Change lead -->
+      <div style="border-top:1px solid var(--gray-200);padding-top:1rem;">
+        <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:0.75rem;">Change team lead</h3>
+        <div style="display:flex;gap:8px;">
+          <select id="changeLeadSelect" style="flex:1;"></select>
+          <button class="btn btn-outline btn-sm" onclick="changeTeamLead()">Set as Lead</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MOVE MEMBER MODAL ── -->
+  <div id="moveMemberModal" class="modal-overlay" style="display:none;" onclick="closeModalIfOutside(event,'moveMemberModal')">
+    <div class="modal-box" style="max-width:400px;">
+      <div class="modal-header">
+        <h2>Move Member</h2>
+        <button class="modal-close" onclick="closeModal('moveMemberModal')">✕</button>
+      </div>
+      <input type="hidden" id="moveMemberId" />
+      <p id="moveMemberName" style="font-weight:700;color:var(--blue);margin-bottom:1rem;"></p>
+      <div class="form-group">
+        <label for="moveToTeamSelect">Move to team</label>
+        <select id="moveToTeamSelect"></select>
+      </div>
+      <div id="moveMemberMsg" class="form-msg" style="display:none;margin-top:0.75rem;"></div>
+      <div style="display:flex;gap:10px;margin-top:1rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="moveMember()">Move</button>
+        <button class="btn btn-ghost" onclick="closeModal('moveMemberModal')">Cancel</button>
       </div>
     </div>
   </div>
