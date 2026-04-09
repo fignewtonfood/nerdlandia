@@ -240,3 +240,155 @@ function deriveEventStatus(startDate, endDate) {
   if (today > end)   return 'completed';
   return 'active';
 }
+
+// ── ADMIN: CREATE USER ────────────────────────────────────────
+
+// Send a Supabase magic link / invite email
+async function adminInviteUser(email) {
+  const { data, error } = await sb.auth.admin?.inviteUserByEmail
+    ? await sb.auth.admin.inviteUserByEmail(email)
+    : await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  return { data, error };
+}
+
+// Create a profile-only record (no auth account)
+async function adminCreateProfileOnly({ email, username, full_name, role }) {
+  // Insert directly into profiles — no auth user, so we generate a placeholder UUID
+  // This profile won't be able to log in until they register with matching email
+  const { data, error } = await sb
+    .from('profiles')
+    .insert({ 
+      id: crypto.randomUUID(),
+      email, 
+      username: username || null,
+      full_name: full_name || null,
+      role: role || 'individual'
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+// ── ADMIN: CREATE TEAM ────────────────────────────────────────
+async function adminCreateTeam({ name, description, leadId }) {
+  const user = await getUser();
+
+  // Validate name
+  const nameCheck = await validateTeamName(name);
+  if (!nameCheck.valid) return { error: { message: nameCheck.error } };
+
+  const taken = await isTeamNameTaken(name);
+  if (taken) return { error: { message: 'That team name is already taken.' } };
+
+  // Insert team
+  const { data: team, error: teamErr } = await sb
+    .from('teams')
+    .insert({ 
+      name: name.trim(), 
+      description: description || null,
+      lead_id: leadId || null
+    })
+    .select()
+    .single();
+  if (teamErr) return { error: teamErr };
+
+  // If a lead was chosen, update their profile
+  if (leadId) {
+    await sb.from('profiles')
+      .update({ team_id: team.id, role: 'team_lead' })
+      .eq('id', leadId);
+  }
+
+  return { team, error: null };
+}
+
+// ── ADMIN: MEMBER MANAGEMENT ──────────────────────────────────
+
+async function adminAddMemberToTeam(userId, teamId) {
+  // Check team isn't full
+  const { count } = await sb
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('team_id', teamId);
+  if (count >= 4) return { error: { message: 'Team is full (max 4 members).' } };
+
+  const { error } = await sb
+    .from('profiles')
+    .update({ team_id: teamId })
+    .eq('id', userId);
+  return { error };
+}
+
+async function adminRemoveMemberFromTeam(userId, teamId) {
+  const { data: profile } = await sb.from('profiles').select('role').eq('id', userId).single();
+  const newRole = profile?.role === 'admin' ? 'admin' : 'individual';
+  const { error } = await sb
+    .from('profiles')
+    .update({ team_id: null, role: newRole })
+    .eq('id', userId);
+  return { error };
+}
+
+async function adminChangeTeamLead(newLeadId, teamId) {
+  // Demote current lead
+  const { data: currentLead } = await sb
+    .from('profiles')
+    .select('id, role')
+    .eq('team_id', teamId)
+    .eq('role', 'team_lead')
+    .maybeSingle();
+  
+  if (currentLead && currentLead.id !== newLeadId) {
+    await sb.from('profiles')
+      .update({ role: 'individual' })
+      .eq('id', currentLead.id);
+  }
+
+  // Promote new lead
+  await sb.from('profiles')
+    .update({ role: 'team_lead', team_id: teamId })
+    .eq('id', newLeadId);
+
+  // Update teams table
+  await sb.from('teams')
+    .update({ lead_id: newLeadId })
+    .eq('id', teamId);
+
+  return { error: null };
+}
+
+async function adminMoveMember(userId, fromTeamId, toTeamId) {
+  // Check destination team isn't full
+  const { count } = await sb
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('team_id', toTeamId);
+  if (count >= 4) return { error: { message: 'Destination team is full (max 4 members).' } };
+
+  // If moving the team lead, trigger auto-promotion on source team first
+  const { data: profile } = await sb.from('profiles').select('role').eq('id', userId).single();
+  if (profile?.role === 'team_lead') {
+    // Promote oldest remaining member on source team
+    const { data: nextLead } = await sb
+      .from('profiles')
+      .select('id')
+      .eq('team_id', fromTeamId)
+      .neq('id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (nextLead) {
+      await sb.from('profiles').update({ role: 'team_lead' }).eq('id', nextLead.id);
+      await sb.from('teams').update({ lead_id: nextLead.id }).eq('id', fromTeamId);
+    } else {
+      await sb.from('teams').update({ lead_id: null }).eq('id', fromTeamId);
+    }
+  }
+
+  // Move member
+  const { error } = await sb
+    .from('profiles')
+    .update({ team_id: toTeamId, role: 'individual' })
+    .eq('id', userId);
+  return { error };
+}

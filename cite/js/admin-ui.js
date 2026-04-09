@@ -468,7 +468,306 @@ async function removeFromEvent(eventId, teamId) {
   refreshAddTeamSelector(updated);
 }
 
-// ── ACHIEVEMENTS ──────────────────────────────────────────────
+// ── ADD USER ─────────────────────────────────────────────────
+function openAddUserModal() {
+  document.getElementById('addUserEmail').value    = '';
+  document.getElementById('addUserFname').value    = '';
+  document.getElementById('addUserLname').value    = '';
+  document.getElementById('addUserUsername').value = '';
+  document.getElementById('addUserRole').value     = 'individual';
+  document.getElementById('addUserError').style.display   = 'none';
+  document.getElementById('addUserSuccess').style.display = 'none';
+  document.getElementById('addUserMethod').value   = 'invite';
+  setAddUserMethod('invite');
+  openModal('addUserModal');
+}
+
+function setAddUserMethod(method) {
+  document.getElementById('addUserMethod').value = method;
+  const inviteBtn = document.getElementById('addUserMethodInvite');
+  const manualBtn = document.getElementById('addUserMethodManual');
+  const desc      = document.getElementById('addUserMethodDesc');
+  const actionBtn = document.getElementById('addUserBtn');
+
+  if (method === 'invite') {
+    inviteBtn.className = 'btn btn-sm btn-primary';
+    manualBtn.className = 'btn btn-sm btn-ghost';
+    desc.textContent    = 'Creates a Supabase account and sends the user a confirmation email so they can log in.';
+    actionBtn.textContent = 'Send Invite';
+  } else {
+    inviteBtn.className = 'btn btn-sm btn-ghost';
+    manualBtn.className = 'btn btn-sm btn-primary';
+    desc.textContent    = 'Adds a profile record only — no login account created. Useful for manually tracking participants.';
+    actionBtn.textContent = 'Add Profile';
+  }
+}
+
+async function addUser() {
+  const method   = document.getElementById('addUserMethod').value;
+  const email    = document.getElementById('addUserEmail').value.trim();
+  const fname    = document.getElementById('addUserFname').value.trim();
+  const lname    = document.getElementById('addUserLname').value.trim();
+  const username = document.getElementById('addUserUsername').value.trim();
+  const role     = document.getElementById('addUserRole').value;
+  const errEl    = document.getElementById('addUserError');
+  const okEl     = document.getElementById('addUserSuccess');
+  errEl.style.display = okEl.style.display = 'none';
+
+  if (!email) { errEl.textContent = 'Email is required.'; errEl.style.display = 'block'; return; }
+
+  if (method === 'invite') {
+    // Use Supabase auth OTP to send a magic link
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true }
+    });
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    okEl.textContent = `✅ Invite sent to ${email}! They'll receive a login link.`;
+    okEl.style.display = 'block';
+    // Update profile fields if they register
+    // (profile is auto-created on signup via trigger — fields set after)
+  } else {
+    const full_name = [fname, lname].filter(Boolean).join(' ') || null;
+    const { error } = await adminCreateProfileOnly({ email, username: username || null, full_name, role });
+    if (error) {
+      errEl.textContent = error.message.includes('profiles_id') 
+        ? 'A profile with this email may already exist.' 
+        : error.message;
+      errEl.style.display = 'block'; return;
+    }
+    okEl.textContent = `✅ Profile created for ${email}.`;
+    okEl.style.display = 'block';
+    _allUsers = []; loadUsers();
+  }
+
+  document.getElementById('addUserEmail').value    = '';
+  document.getElementById('addUserFname').value    = '';
+  document.getElementById('addUserLname').value    = '';
+  document.getElementById('addUserUsername').value = '';
+}
+
+// ── ADD TEAM ─────────────────────────────────────────────────
+async function openAddTeamModal() {
+  document.getElementById('addTeamName').value  = '';
+  document.getElementById('addTeamDesc').value  = '';
+  document.getElementById('addTeamError').style.display = 'none';
+  document.getElementById('addTeamNameMsg').style.display = 'none';
+
+  // Populate lead selector with users who have no team
+  if (!_allUsers.length) { const { data } = await getAllUsers(); _allUsers = data || []; }
+  const available = _allUsers.filter(u => !u.team_id);
+  const sel = document.getElementById('addTeamLead');
+  sel.innerHTML = '<option value="">— No lead assigned —</option>' +
+    available.map(u => `<option value="${u.id}">${u.username || u.email}</option>`).join('');
+
+  openModal('addTeamModal');
+}
+
+let _addTeamNameTimer;
+function liveValidateNewTeamName() {
+  clearTimeout(_addTeamNameTimer);
+  _addTeamNameTimer = setTimeout(async () => {
+    const val = document.getElementById('addTeamName').value;
+    const msg = document.getElementById('addTeamNameMsg');
+    if (!val.trim()) { msg.style.display = 'none'; return; }
+    const { valid, error } = await validateTeamName(val);
+    msg.style.display = 'block';
+    if (valid) {
+      const taken = await isTeamNameTaken(val);
+      msg.textContent = taken ? '❌ Already taken.' : '✅ Name looks good!';
+      msg.style.color = taken ? 'var(--coral)' : 'var(--green)';
+    } else {
+      msg.textContent = '❌ ' + error;
+      msg.style.color = 'var(--coral)';
+    }
+  }, 500);
+}
+
+async function addTeamAdmin() {
+  const name   = document.getElementById('addTeamName').value.trim();
+  const desc   = document.getElementById('addTeamDesc').value.trim();
+  const leadId = document.getElementById('addTeamLead').value || null;
+  const errEl  = document.getElementById('addTeamError');
+  errEl.style.display = 'none';
+
+  if (!name) { errEl.textContent = 'Team name is required.'; errEl.style.display = 'block'; return; }
+
+  const { error } = await adminCreateTeam({ name, description: desc || null, leadId });
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+
+  closeModal('addTeamModal');
+  _allTeams = []; loadTeams();
+  _allUsers = []; // refresh user list so team_id updates show
+}
+
+// ── MANAGE TEAM MEMBERS ───────────────────────────────────────
+async function openManageTeam(teamId) {
+  document.getElementById('manageTeamId').value = teamId;
+  document.getElementById('manageTeamMsg').style.display = 'none';
+
+  const team = _allTeams.find(t => t.id === teamId);
+  document.getElementById('manageTeamTitle').textContent = `Manage: ${team?.name || 'Team'}`;
+
+  if (!_allUsers.length) { const { data } = await getAllUsers(); _allUsers = data || []; }
+
+  await refreshManageTeamView(teamId);
+  openModal('manageTeamModal');
+}
+
+async function refreshManageTeamView(teamId) {
+  // Refresh teams data
+  const { data } = await getAllTeams();
+  _allTeams = data || [];
+  const team = _allTeams.find(t => t.id === teamId);
+  const members = team?.profiles || [];
+
+  // Render current members
+  const membersEl = document.getElementById('manageTeamMembers');
+  if (!members.length) {
+    membersEl.innerHTML = '<p class="loading-msg" style="padding:1rem;">No members yet.</p>';
+  } else {
+    membersEl.innerHTML = members.map(m => `
+      <div class="admin-row">
+        <img src="${m.photo_url || PLACEHOLDER_AVATAR}" class="admin-avatar" onerror="this.src='${PLACEHOLDER_AVATAR}'" />
+        <div class="admin-row-info">
+          <strong>${m.username || m.email}</strong>
+          <span>${m.role === 'team_lead' ? '👑 Team Lead' : m.role === 'admin' ? '⚡ Admin' : 'Member'}</span>
+        </div>
+        <div class="admin-row-actions">
+          <button class="btn btn-sm btn-ghost" onclick="openMoveMember('${m.id}','${teamId}','${(m.username || m.email).replace(/'/g,"\\'")}')">Move</button>
+          <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="removeMemberAdmin('${m.id}','${teamId}')">Remove</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Add member selector — users with no team
+  const available = _allUsers.filter(u => !u.team_id);
+  const addSel = document.getElementById('addMemberSelect');
+  addSel.innerHTML = available.length
+    ? available.map(u => `<option value="${u.id}">${u.username || u.email}</option>`).join('')
+    : '<option value="">No available users</option>';
+  addSel.disabled = !available.length || members.length >= 4;
+
+  // Change lead selector — current members only
+  const leadSel = document.getElementById('changeLeadSelect');
+  leadSel.innerHTML = members.map(m =>
+    `<option value="${m.id}">${m.username || m.email}${m.role === 'team_lead' ? ' (current lead)' : ''}</option>`
+  ).join('');
+}
+
+async function addMemberToTeam() {
+  const teamId = document.getElementById('manageTeamId').value;
+  const userId = document.getElementById('addMemberSelect').value;
+  const msg    = document.getElementById('manageTeamMsg');
+  msg.style.display = 'none';
+  if (!userId) return;
+
+  const { error } = await adminAddMemberToTeam(userId, teamId);
+  msg.style.display = 'block';
+  if (error) { msg.textContent = '❌ ' + error.message; msg.className = 'form-msg error'; }
+  else { msg.textContent = '✅ Member added!'; msg.className = 'form-msg success'; }
+  _allUsers = []; const { data } = await getAllUsers(); _allUsers = data || [];
+  await refreshManageTeamView(teamId);
+}
+
+async function removeMemberAdmin(userId, teamId) {
+  if (!confirm('Remove this member from the team?')) return;
+  const { error } = await adminRemoveMemberFromTeam(userId, teamId);
+  const msg = document.getElementById('manageTeamMsg');
+  msg.style.display = 'block';
+  if (error) { msg.textContent = '❌ ' + error.message; msg.className = 'form-msg error'; }
+  else { msg.textContent = '✅ Member removed.'; msg.className = 'form-msg success'; }
+  _allUsers = []; const { data } = await getAllUsers(); _allUsers = data || [];
+  await refreshManageTeamView(teamId);
+}
+
+async function changeTeamLead() {
+  const teamId    = document.getElementById('manageTeamId').value;
+  const newLeadId = document.getElementById('changeLeadSelect').value;
+  const msg       = document.getElementById('manageTeamMsg');
+  msg.style.display = 'none';
+  if (!newLeadId) return;
+
+  const { error } = await adminChangeTeamLead(newLeadId, teamId);
+  msg.style.display = 'block';
+  if (error) { msg.textContent = '❌ ' + error.message; msg.className = 'form-msg error'; }
+  else { msg.textContent = '✅ Team lead updated!'; msg.className = 'form-msg success'; }
+  _allUsers = []; const { data } = await getAllUsers(); _allUsers = data || [];
+  await refreshManageTeamView(teamId);
+}
+
+// ── MOVE MEMBER ───────────────────────────────────────────────
+async function openMoveMember(userId, fromTeamId, userName) {
+  document.getElementById('moveMemberId').value = userId;
+  document.getElementById('moveMemberName').textContent = userName;
+  document.getElementById('moveMemberMsg').style.display = 'none';
+
+  // Populate destination teams (exclude current team, exclude full teams)
+  if (!_allTeams.length) { const { data } = await getAllTeams(); _allTeams = data || []; }
+  const destinations = _allTeams.filter(t => {
+    if (t.id === fromTeamId) return false;
+    const memberCount = (t.profiles || []).length;
+    return memberCount < 4;
+  });
+
+  const sel = document.getElementById('moveToTeamSelect');
+  sel.innerHTML = destinations.length
+    ? destinations.map(t => `<option value="${t.id}|${fromTeamId}">${t.name} (${(t.profiles||[]).length}/4)</option>`).join('')
+    : '<option value="">No available teams</option>';
+
+  openModal('moveMemberModal');
+}
+
+async function moveMember() {
+  const userId = document.getElementById('moveMemberId').value;
+  const val    = document.getElementById('moveToTeamSelect').value;
+  const msg    = document.getElementById('moveMemberMsg');
+  msg.style.display = 'none';
+  if (!val) return;
+
+  const [toTeamId, fromTeamId] = val.split('|');
+  const { error } = await adminMoveMember(userId, fromTeamId, toTeamId);
+  msg.style.display = 'block';
+  if (error) { msg.textContent = '❌ ' + error.message; msg.className = 'form-msg error'; return; }
+  msg.textContent = '✅ Member moved!'; msg.className = 'form-msg success';
+  _allTeams = []; _allUsers = [];
+  setTimeout(() => {
+    closeModal('moveMemberModal');
+    closeModal('manageTeamModal');
+    loadTeams();
+  }, 1000);
+}
+
+// ── UPDATED renderTeams — adds Manage Members button ─────────
+// (override the one defined earlier in this file)
+async function loadTeams() {
+  const { data } = await getAllTeams();
+  _allTeams = data || [];
+  renderTeams(_allTeams);
+}
+
+function renderTeams(teams) {
+  const el = document.getElementById('teamsList');
+  if (!teams.length) { el.innerHTML = '<p class="loading-msg">No teams found.</p>'; return; }
+  el.innerHTML = teams.map(t => {
+    const members = t.profiles || [];
+    return `
+      <div class="admin-row">
+        <img src="${t.photo_url || PLACEHOLDER_AVATAR}" class="admin-avatar" onerror="this.src='${PLACEHOLDER_AVATAR}'" />
+        <div class="admin-row-info">
+          <strong>${t.name}</strong>
+          <span>${members.length}/4 members: ${members.map(m => m.username || m.email).join(', ') || 'none'}</span>
+        </div>
+        <div class="admin-row-actions">
+          <button class="btn btn-sm btn-ghost" onclick="openEditTeam('${t.id}')">Edit</button>
+          <button class="btn btn-sm btn-outline" onclick="openManageTeam('${t.id}')">Members</button>
+          <a href="team.html?id=${t.id}" class="btn btn-sm btn-ghost" target="_blank">View</a>
+          <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="deleteTeam('${t.id}','${t.name.replace(/'/g,"\\'")}')">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
 async function loadAchievements() {
   const { data } = await getAllAchievements();
   _allAchievements = data || [];
