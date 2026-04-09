@@ -17,8 +17,18 @@ async function requireAdmin() {
 async function getAllUsers() {
   const { data, error } = await sb
     .from('profiles')
-    .select('*, teams(name)')
+    .select('*')
     .order('created_at', { ascending: true });
+
+  if (error || !data) return { data, error };
+
+  const teamIds = [...new Set(data.filter(u => u.team_id).map(u => u.team_id))];
+  if (teamIds.length) {
+    const { data: teams } = await sb.from('teams').select('id, name').in('id', teamIds);
+    const teamMap = Object.fromEntries((teams || []).map(t => [t.id, t]));
+    data.forEach(u => { u.teams = u.team_id ? teamMap[u.team_id] : null; });
+  }
+
   return { data, error };
 }
 
@@ -46,8 +56,25 @@ async function adminRevokeAdmin(userId) {
 async function getAllTeams() {
   const { data, error } = await sb
     .from('teams')
-    .select('*, profiles(id, username, email, role, photo_url)')
+    .select('*')
     .order('created_at', { ascending: false });
+
+  if (error || !data) return { data, error };
+
+  const teamIds = data.map(t => t.id);
+  if (teamIds.length) {
+    const { data: profiles } = await sb
+      .from('profiles')
+      .select('id, username, email, role, photo_url, team_id')
+      .in('team_id', teamIds);
+    const memberMap = {};
+    (profiles || []).forEach(p => {
+      if (!memberMap[p.team_id]) memberMap[p.team_id] = [];
+      memberMap[p.team_id].push(p);
+    });
+    data.forEach(t => { t.profiles = memberMap[t.id] || []; });
+  }
+
   return { data, error };
 }
 
