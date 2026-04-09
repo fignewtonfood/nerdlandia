@@ -3,8 +3,7 @@
 //  js/admin-ui.js
 // ─────────────────────────────────────────────────────────────
 
-const PLACEHOLDER_AVATAR = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23EEEDFE"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="36">🧙</text></svg>';
-
+const PLACEHOLDER_AVATAR = 'https://placehold.co/42x42/EEEDFE/3C3489?text=?';
 let _allUsers        = [];
 let _allTeams        = [];
 let _allEvents       = [];
