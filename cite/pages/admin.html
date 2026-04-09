@@ -50,6 +50,7 @@
           <button class="admin-tab" onclick="switchTab('teams', this)">👥 Teams</button>
           <button class="admin-tab" onclick="switchTab('events', this)">📅 Events</button>
           <button class="admin-tab" onclick="switchTab('achievements', this)">🏅 Achievements</button>
+          <button class="admin-tab" onclick="switchTab('nouns', this)">📝 Noun List</button>
         </div>
 
         <!-- ── USERS TAB ── -->
@@ -92,6 +93,33 @@
             <button class="btn btn-primary btn-sm" onclick="openAchievementModal()">+ New Achievement</button>
           </div>
           <div id="achievementsList" class="admin-list"><p class="loading-msg">Loading achievements…</p></div>
+        </div>
+
+        <!-- ── NOUN LIST TAB ── -->
+        <div id="tab-nouns" class="admin-tab-content" style="display:none;">
+          <div class="admin-toolbar">
+            <h2>Noun List</h2>
+            <span style="font-size:0.85rem;color:var(--text-muted);" id="nounCount"></span>
+          </div>
+
+          <!-- Add nouns -->
+          <div class="panel" style="margin-bottom:1.25rem;">
+            <div class="panel-header" style="margin-bottom:0.75rem;">
+              <h3 style="font-family:var(--font-display);font-size:1.05rem;">Add nouns</h3>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;">
+              Enter one noun per line, or comma-separated. Each will be capitalized automatically.
+            </p>
+            <textarea id="nounInput" rows="4" placeholder="Penguin&#10;Robot&#10;Wizard"></textarea>
+            <div id="nounAddMsg" class="form-msg" style="display:none;margin-top:0.75rem;"></div>
+            <button class="btn btn-primary btn-sm" style="margin-top:0.75rem;" onclick="addNouns()">Add to List</button>
+          </div>
+
+          <!-- Search and browse -->
+          <div class="admin-toolbar" style="margin-bottom:0.75rem;">
+            <input type="text" id="nounSearch" placeholder="Search nouns…" oninput="filterNouns()" style="max-width:300px;" />
+          </div>
+          <div id="nounGrid" class="noun-grid"><p class="loading-msg">Loading nouns…</p></div>
         </div>
 
       </div>
