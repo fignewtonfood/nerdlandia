@@ -61,8 +61,28 @@ async function adminRevokeAdmin(userId) {
 async function getAllTeams() {
   const { data, error } = await sb
     .from('teams')
-    .select('*, profiles(id, username, email, role, photo_url)')
+    .select('*')
     .order('created_at', { ascending: false });
+
+  if (error || !data) return { data, error };
+
+  // Fetch members separately for each team
+  const teamIds = data.map(t => t.id);
+  if (teamIds.length) {
+    const { data: profiles } = await sb
+      .from('profiles')
+      .select('id, username, email, role, photo_url, team_id')
+      .in('team_id', teamIds);
+
+    const memberMap = {};
+    (profiles || []).forEach(p => {
+      if (!memberMap[p.team_id]) memberMap[p.team_id] = [];
+      memberMap[p.team_id].push(p);
+    });
+
+    data.forEach(t => { t.profiles = memberMap[t.id] || []; });
+  }
+
   return { data, error };
 }
 
