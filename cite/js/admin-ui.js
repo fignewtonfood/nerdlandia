@@ -57,6 +57,19 @@ function filterNouns() {
 
 function renderNouns() {}
 
+function filterNouns() {
+  const q = document.getElementById('nounSearch').value.trim();
+  if (!q) { document.getElementById('nounGrid').innerHTML = ''; return; }
+  sb.from('noun_list').select('word').ilike('word', `%${q}%`).order('word').limit(50)
+    .then(({ data }) => {
+      const el = document.getElementById('nounGrid');
+      if (!data || !data.length) { el.innerHTML = '<p class="loading-msg">No nouns found.</p>'; return; }
+      el.innerHTML = data.map(r => `<span class="noun-pill">${r.word}</span>`).join('');
+    });
+}
+
+function renderNouns() {}
+
 async function addNouns() {
   const raw = document.getElementById('nounInput').value;
   const msg = document.getElementById('nounAddMsg');
