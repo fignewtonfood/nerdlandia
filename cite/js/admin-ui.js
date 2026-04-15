@@ -2,6 +2,7 @@
 //  Nerdlandia — Admin UI Logic
 //  js/admin-ui.js
 // ─────────────────────────────────────────────────────────────
+// v2
 
 const PLACEHOLDER_AVATAR = 'https://placehold.co/42x42/EEEDFE/3C3489?text=?';
 let _allUsers        = [];
