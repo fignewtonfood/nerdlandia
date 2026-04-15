@@ -36,13 +36,26 @@ function switchTab(tab, btn) {
 let _allNouns = [];
 
 async function loadNouns() {
-  const { count } = await sb
-    .from('noun_list')
-    .select('*', { count: 'exact', head: true });
-  const countEl = document.getElementById('nounCount');
-  if (countEl) countEl.textContent = `${(count || 0).toLocaleString()} nouns in the list`;
-  const grid = document.getElementById('nounGrid');
-  if (grid) grid.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">Use the search box to find specific nouns, or add new ones above.</p>';
+  let allWords = [];
+  let from = 0;
+  const pageSize = 1000;
+  
+  while (true) {
+    const { data, error } = await sb
+      .from('noun_list')
+      .select('word')
+      .range(from, from + pageSize - 1);
+    
+    if (error) { console.error('Could not load noun list', error); break; }
+    if (!data || data.length === 0) break;
+    
+    allWords = allWords.concat(data.map(r => r.word.toLowerCase()));
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  
+  _nounCache = new Set(allWords);
+  return _nounCache;
 }
 
 function filterNouns() {
