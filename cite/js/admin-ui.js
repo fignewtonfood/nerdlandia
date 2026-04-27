@@ -470,9 +470,7 @@ function renderEventTeamsList(ev) {
         <strong>${r.teams?.name || 'Unknown team'}</strong>
         <span>Points: <strong>${r.points}</strong> · Placement: ${r.placement ? `#${r.placement}` : '—'}</span>
       </div>
-      <div class="admin-row-actions">
-        <button class="btn btn-sm btn-outline" onclick="openPointsModal('${ev.id}','${r.team_id}',${r.points},${r.placement || ''},${JSON.stringify(r.teams?.name || '').replace(/"/g,"'")})">Edit Points</button>
-        <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="removeFromEvent('${ev.id}','${r.team_id}')">Remove</button>
+      <div class="admin-row-actions"><button class="btn btn-sm btn-outline" onclick="openPointsModal('${ev.id}','${r.team_id}',${r.points},${r.placement || 0},'${(r.teams?.name || '').replace(/'/g, '&apos;')}')">Edit Points</button>        <button class="btn btn-sm btn-ghost" style="color:var(--coral);" onclick="removeFromEvent('${ev.id}','${r.team_id}')">Remove</button>
       </div>
     </div>`).join('');
 }
