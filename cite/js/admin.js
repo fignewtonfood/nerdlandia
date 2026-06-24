@@ -205,10 +205,12 @@ async function adminCreateAchievement({ name, description, levels, imageFile }) 
   if (error) return { data: null, error };
 
   if (imageFile) {
-    const ext = imageFile.name.split('.').pop();
-    const path = `${ach.id}/badge.${ext}`;
-    const { error: upErr } = await sb.storage.from('achievements').upload(path, imageFile, { upsert: true });
-    if (!upErr) {
+      const ext = imageFile.name.split('.').pop();
+      const path = `${ach.id}/badge.${ext}`;
+      const { error: upErr } = await sb.storage.from('achievements').upload(path, imageFile, { upsert: true });
+      if (upErr) {
+        return { data: ach, error: { message: 'Achievement saved, but image upload failed: ' + upErr.message } };
+      }
       const { data: urlData } = sb.storage.from('achievements').getPublicUrl(path);
       await sb.from('achievements').update({ image_url: urlData.publicUrl }).eq('id', ach.id);
       ach.image_url = urlData.publicUrl;
