@@ -354,39 +354,45 @@
         const levels = (ach.levels || []).slice().sort((a, b) => (a.threshold || 0) - (b.threshold || 0));
         if (!levels.length) return;
 
-        const progress = ta.progress || 0;
+        const progress     = ta.progress || 0;
+        const topThreshold = levels[levels.length - 1].threshold || 0;
+        const isMaxed      = progress >= topThreshold;
 
-        // Derive achieved level from progress — never trust stored current_level
-        let achievedIndex = -1;
+        // Earned level = highest threshold reached (drives the text label + tooltip marker)
+        let earnedCount = 0;
         for (let i = 0; i < levels.length; i++) {
-          if (progress >= (levels[i].threshold || 0)) achievedIndex = i;
+          if (progress >= (levels[i].threshold || 0)) earnedCount = i + 1;
           else break;
         }
-        const isMaxed = achievedIndex === levels.length - 1;
 
-        // The band the ring represents: from the level you're in, toward the next
-        const nextIndex     = isMaxed ? achievedIndex : achievedIndex + 1;
-        const prevThreshold = achievedIndex >= 0 ? (levels[achievedIndex].threshold || 0) : 0;
-        const nextThreshold = levels[nextIndex].threshold || (prevThreshold + 1);
-        const rangeSize     = Math.max(1, nextThreshold - prevThreshold);
-        const progressInRange = Math.max(0, progress - prevThreshold);
-        const progressPct   = isMaxed ? 100 : Math.min(100, (progressInRange / rangeSize) * 100);
+        // Target level = the one we're filling TOWARD; its colour is the ring colour.
+        // Landing exactly on a threshold keeps that level as target => shown FULL.
+        let targetIndex;
+        if (isMaxed) {
+          targetIndex = levels.length - 1;
+        } else {
+          targetIndex = 0;
+          while (targetIndex < levels.length && progress > (levels[targetIndex].threshold || 0)) targetIndex++;
+        }
+        const targetLevel     = levels[targetIndex];
+        const prevThreshold   = targetIndex > 0 ? (levels[targetIndex - 1].threshold || 0) : 0;
+        const targetThreshold = targetLevel.threshold || (prevThreshold + 1);
+        const band            = Math.max(1, targetThreshold - prevThreshold);
+        const progressPct     = isMaxed ? 100 : Math.min(100, ((progress - prevThreshold) / band) * 100);
+        const ringColor       = targetLevel.color || '#888';
 
-        // Color = level you've reached, so it changes ("resets in new color") on level up
-        const displayLevel = achievedIndex >= 0 ? levels[achievedIndex] : levels[nextIndex];
-        const ringColor    = displayLevel.color || '#888';
-        const labelText    = isMaxed
-          ? '★ ' + levels[achievedIndex].label
-          : (achievedIndex >= 0 ? levels[achievedIndex].label : 'Unranked');
+        const labelText = isMaxed
+          ? '★ ' + levels[levels.length - 1].label
+          : (earnedCount > 0 ? levels[earnedCount - 1].label : 'Unranked');
 
         const size = 72, radius = 30, stroke = 5;
         const circumference = 2 * Math.PI * radius;
         const dashOffset = circumference - (progressPct / 100) * circumference;
 
         const tooltipLevels = levels.map((l, i) => `
-          <div class="badge-tooltip-level ${i === achievedIndex ? 'current' : ''}">
+          <div class="badge-tooltip-level ${i === earnedCount - 1 ? 'current' : ''}">
             <span class="badge-tooltip-dot" style="background:${l.color};"></span>
-            ${l.label}: ${l.threshold} pts${i === achievedIndex ? ' ← current' : ''}
+            ${l.label}: ${l.threshold} pts${i === earnedCount - 1 ? ' ← current' : ''}
           </div>
         `).join('');
 
@@ -424,7 +430,7 @@
             <div class="badge-tooltip-title">${ach.name}</div>
             <div style="color:rgba(255,255,255,0.6);font-size:0.75rem;margin-bottom:6px;">${ach.description || ''}</div>
             ${tooltipLevels}
-            <div style="margin-top:6px;color:rgba(255,255,255,0.5);">Progress: ${progress} pts${isMaxed ? ' · maxed' : ' / ' + nextThreshold}</div>
+            <div style="margin-top:6px;color:rgba(255,255,255,0.5);">Progress: ${progress} pts${isMaxed ? ' · maxed' : ' / ' + targetThreshold}</div>
           </div>
         `;
         grid.appendChild(wrap);
